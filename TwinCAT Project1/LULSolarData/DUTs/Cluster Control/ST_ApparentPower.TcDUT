@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.3">
+  <DUT Name="ST_ApparentPower" Id="{d44c6458-0792-40d9-98a5-b11840ad521a}">
+    <Declaration><![CDATA[TYPE ST_ApparentPower :
+STRUCT
+	ApparentPower_Total			:DINT;
+	ApparentPower_L1			:DINT;
+	ApparentPower_L2			:DINT;
+	ApparentPower_L3			:DINT;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.3">
+  <POU Name="WXT530_Logg" Id="{1dad376d-83a6-4d8e-bf5e-d81ac5482c60}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM WXT530_Logg
+VAR
+	
+	fbLogg1 		:FB_SaveToCSV_WXT530;
+	tUpdateTime1	:TIME:=T#5S;
+	sFileName1		:STRING(255):='WXT5301';
+	
+	fbLogg2 		:FB_SaveToCSV_WXT530;
+	tUpdateTime2	:TIME:=T#5S;
+	sFileName2		:STRING(255):='WXT5302';
+	
+	fbLogg3 		:FB_SaveToCSV_WXT530;
+	tUpdateTime3	:TIME:=T#5S;
+	sFileName3		:STRING(255):='WXT5303';
+	
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbLogg1(
+	bChangeSeparatorToComma:= FALSE, 
+	bExecute:= GVL_Fastighet.CSVWXT530, 
+	tUpdateTime:= tUpdateTime1, 
+	sFileName:= sFileName1, 
+	nDayOfWeek:= PLC_TID.fbTime.systemTime.wDayOfWeek,
+	sColumn1TimeStamp:= PLC_TID.systemTime, 
+	sColumn2:= REAL_TO_STRING(GVL_WXT530._GW3U_DN), 
+	sColumn3:= REAL_TO_STRING(GVL_WXT530._GW3U_DM), 
+	sColumn4:= REAL_TO_STRING(GVL_WXT530._GW3U_DX), 
+	sColumn5:= REAL_TO_STRING(GVL_WXT530._GW3U_SN), 
+	sColumn6:= REAL_TO_STRING(GVL_WXT530._GW3U_SM), 
+	sColumn7:= REAL_TO_STRING(GVL_WXT530._GW3U_SX));
+	
+	
+fbLogg2(
+	bChangeSeparatorToComma:= FALSE, 
+	bExecute:= GVL_Fastighet.CSVWXT530, 
+	tUpdateTime:= tUpdateTime2, 
+	sFileName:= sFileName2, 
+	nDayOfWeek:= PLC_TID.fbTime.systemTime.wDayOfWeek,
+	sColumn1TimeStamp:= PLC_TID.systemTime, 
+	sColumn2:= REAL_TO_STRING(GVL_WXT530._GW3U_GT3U), 
+	sColumn3:= REAL_TO_STRING(GVL_WXT530._GW3U_GT41), 
+	sColumn4:= REAL_TO_STRING(GVL_WXT530._GW3U_GM41), 
+	sColumn5:= REAL_TO_STRING(GVL_WXT530._GW3U_GP41), 
+	sColumn6:= REAL_TO_STRING(GVL_WXT530._GW3U_RC), 
+	sColumn7:= REAL_TO_STRING(GVL_WXT530._GW3U_RD));
+	
+	
+	fbLogg3(
+	bChangeSeparatorToComma:= FALSE, 
+	bExecute:= GVL_Fastighet.CSVWXT530, 
+	tUpdateTime:= tUpdateTime3, 
+	sFileName:= sFileName3, 
+	nDayOfWeek:= PLC_TID.fbTime.systemTime.wDayOfWeek,
+	sColumn1TimeStamp:= PLC_TID.systemTime, 
+	sColumn2:= REAL_TO_STRING(GVL_WXT530._GW3U_RI), 
+	sColumn3:= REAL_TO_STRING(GVL_WXT530._GW3U_HC), 
+	sColumn4:= REAL_TO_STRING(GVL_WXT530._GW3U_HD), 
+	sColumn5:= REAL_TO_STRING(GVL_WXT530._GW3U_HI), 
+	sColumn6:= REAL_TO_STRING(GVL_WXT530._GW3U_RP), 
+	sColumn7:= REAL_TO_STRING(GVL_WXT530._GW3U_HP));]]></ST>
+    </Implementation>
+    <LineIds Name="WXT530_Logg">
+      <LineId Id="80" Count="41" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

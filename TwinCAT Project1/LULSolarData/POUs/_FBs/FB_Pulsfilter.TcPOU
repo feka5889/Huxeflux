@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_Pulsfilter" Id="{ab60a1a6-aac2-4fa3-97cb-da4f5c188b80}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Pulsfilter
+
+VAR_INPUT
+	bIN: BOOL;
+	FTimeOn: TIME:=t#2ms;
+	FTimeOff: TIME:=t#2ms;
+END_VAR
+VAR_OUTPUT
+	bQ: BOOL;
+END_VAR
+VAR
+
+	FilterOn: TON;
+	Pf_Trigg: R_TRIG;
+	FilterOff: TOF;
+	SetReset: SR;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[FilterOn(IN:=bIN,);
+FilterOn(PT:=FTimeOn,);
+FilterOn.ET;
+
+FilterOff(IN:=bIN,);
+FilterOff(PT:=FTimeOff,);
+FilterOff.ET;
+
+SetReset(SET1:=FilterOn.Q,);
+SetReset(RESET:=NOT FilterOff.Q,);
+
+Pf_Trigg(CLK:=SetReset.Q1,);
+
+IF Pf_Trigg.Q THEN
+	bQ:=TRUE;
+ELSE
+	bQ:=FALSE;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_Pulsfilter">
+      <LineId Id="25" Count="16" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

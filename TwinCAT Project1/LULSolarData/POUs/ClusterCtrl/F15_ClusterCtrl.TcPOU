@@ -1,0 +1,153 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.3">
+  <POU Name="F15_ClusterCtrl" Id="{7262dff8-9a26-48ad-bc63-39660bb63430}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM F15_ClusterCtrl
+
+VAR
+	DeviceStatus1 :DWORD;
+	DeviceStatus2 :DWORD;
+	DeviceStatus3 :DWORD;
+	
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ClusterControl_3Unit();
+
+GVL_ClusterCtrl._CCtrl_V1_P:= 				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stActivePower.ActivePower_Total))*0.001;
+GVL_ClusterCtrl._CCtrl_V1_P1:= 				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stActivePower.ActivePower_L1);	
+GVL_ClusterCtrl._CCtrl_V1_P2:= 				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stActivePower.ActivePower_L2);
+GVL_ClusterCtrl._CCtrl_V1_P3:= 				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stActivePower.ActivePower_L3);
+GVL_ClusterCtrl._CCtrl_V1_U1_L1_N:=			(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stLineVoltage.LineVoltage_L1_N)) /100; 	//Scaled to Volt
+GVL_ClusterCtrl._CCtrl_V1_U2_L2_N:=			(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stLineVoltage.LineVoltage_L2_N)) /100;	//Scaled to Volt
+GVL_ClusterCtrl._CCtrl_V1_U3_L3_N:=			(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stLineVoltage.LineVoltage_L3_N)) /100;	//Scaled to Volt
+GVL_ClusterCtrl._CCtrl_V1_U1_L1_L2:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stLineVoltage.LineVoltage_L1_L2);		
+GVL_ClusterCtrl._CCtrl_V1_U2_L2_L3:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stLineVoltage.LineVoltage_L1_L2);		
+GVL_ClusterCtrl._CCtrl_V1_U3_L3_L1:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stLineVoltage.LineVoltage_L3_L1);	
+GVL_ClusterCtrl._CCtrl_V1_Itot:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stLineCurrent.LineCurrent_Total);	
+GVL_ClusterCtrl._CCtrl_V1_I1:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stLineCurrent.LineCurrent_L1)) / 1000; 	// Scaled to Ampere	
+GVL_ClusterCtrl._CCtrl_V1_I2:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stLineCurrent.LineCurrent_L2)) / 1000;	// Scaled to Ampere	
+GVL_ClusterCtrl._CCtrl_V1_I3:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stLineCurrent.LineCurrent_L3)) / 1000;	// Scaled to Ampere	
+//GVL_ClusterCtrl._CCtrl_V1_Yield_Wh:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stYield.Total_AC_energy_all_conductors_Wh);		
+GVL_ClusterCtrl._CCtrl_V1_Yield_KWh:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stYield.Total_AC_energy_all_conductors_kWh);		
+GVL_ClusterCtrl._CCtrl_V1_Yield_MWh:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stYield.Total_AC_energy_all_conductors_MWh);		
+//GVL_ClusterCtrl._CCtrl_V1_YieldDay_Wh:=	F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stYield.Energy_current_day_all_conductors_Wh);		
+GVL_ClusterCtrl._CCtrl_V1_YieldDay_kWh:=	F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stYield.Energy_current_day_all_conductors_kWh);		
+GVL_ClusterCtrl._CCtrl_V1_PV:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stPVDATA.PV_Power);	
+GVL_ClusterCtrl._CCtrl_V1_HZ:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stLineCurrent.PowerFrequency)) / 100; //Scaled to Hz
+GVL_ClusterCtrl._CCtrl_V1_APtot:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stApparentPower.ApparentPower_Total);
+GVL_ClusterCtrl._CCtrl_V1_AP1:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stApparentPower.ApparentPower_L1);
+GVL_ClusterCtrl._CCtrl_V1_AP2:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stApparentPower.ApparentPower_L2);
+GVL_ClusterCtrl._CCtrl_V1_AP3:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stApparentPower.ApparentPower_L3);
+GVL_ClusterCtrl._CCtrl_V1_RPtot:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stReactivePower.ReactivePower_Total);
+GVL_ClusterCtrl._CCtrl_V1_RP1:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stReactivePower.ReactivePower_L1);
+GVL_ClusterCtrl._CCtrl_V1_RP2:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stReactivePower.ReactivePower_L2);
+GVL_ClusterCtrl._CCtrl_V1_RP3:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stReactivePower.ReactivePower_L3);
+GVL_ClusterCtrl._CCtrl_V1_EnSaveMode:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.nEnergySavingMode);
+GVL_ClusterCtrl._CCtrl_V1_TECInt:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.nTotEnergyConsInternally);
+DeviceStatus1:=								F_WordSwap(ClusterControl_3Unit.stClusterCtrlData.stStatus.Device_Status);
+
+GVL_ClusterCtrl._CCtrl_V2_P:= 				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stActivePower.ActivePower_Total))*0.001;			
+GVL_ClusterCtrl._CCtrl_V2_P1:= 				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stActivePower.ActivePower_L1);			
+GVL_ClusterCtrl._CCtrl_V2_P2:= 				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stActivePower.ActivePower_L2);			
+GVL_ClusterCtrl._CCtrl_V2_P3:= 				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stActivePower.ActivePower_L3);			
+GVL_ClusterCtrl._CCtrl_V2_U1_L1_N:=			(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stLineVoltage.LineVoltage_L1_N)) / 100;	//Scaled to Volt			
+GVL_ClusterCtrl._CCtrl_V2_U2_L2_N:=			(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stLineVoltage.LineVoltage_L2_N)) / 100;	//Scaled to Volt			
+GVL_ClusterCtrl._CCtrl_V2_U3_L3_N:=			(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stLineVoltage.LineVoltage_L3_N)) / 100;	//Scaled to Volt			
+GVL_ClusterCtrl._CCtrl_V2_U1_L1_L2:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stLineVoltage.LineVoltage_L1_L2);					
+GVL_ClusterCtrl._CCtrl_V2_U2_L2_L3:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stLineVoltage.LineVoltage_L1_L2);					
+GVL_ClusterCtrl._CCtrl_V2_U3_L3_L1:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stLineVoltage.LineVoltage_L3_L1);
+GVL_ClusterCtrl._CCtrl_V2_Itot:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stLineCurrent.LineCurrent_Total);						
+GVL_ClusterCtrl._CCtrl_V2_I1:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stLineCurrent.LineCurrent_L1)) / 1000; 	// Scaled to Ampere					
+GVL_ClusterCtrl._CCtrl_V2_I2:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stLineCurrent.LineCurrent_L2)) / 1000;	// Scaled to Ampere 					
+GVL_ClusterCtrl._CCtrl_V2_I3:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stLineCurrent.LineCurrent_L3)) / 1000;	// Scaled to Ampere 					
+//GVL_ClusterCtrl._CCtrl_V2_Yield_Wh:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stYield.Total_AC_energy_all_conductors_Wh);					
+GVL_ClusterCtrl._CCtrl_V2_Yield_KWh:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stYield.Total_AC_energy_all_conductors_kWh);					
+GVL_ClusterCtrl._CCtrl_V2_Yield_MWh:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stYield.Total_AC_energy_all_conductors_MWh);					
+//GVL_ClusterCtrl._CCtrl_V2_YieldDay_Wh:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stYield.Energy_current_day_all_conductors_Wh);					
+GVL_ClusterCtrl._CCtrl_V2_YieldDay_kWh:=	F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stYield.Energy_current_day_all_conductors_kWh);					
+GVL_ClusterCtrl._CCtrl_V2_PV:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stPVDATA.PV_Power);					
+GVL_ClusterCtrl._CCtrl_V2_HZ:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stLineCurrent.PowerFrequency)) / 100; //Scaled to Hz
+GVL_ClusterCtrl._CCtrl_V2_APtot:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stApparentPower.ApparentPower_Total);
+GVL_ClusterCtrl._CCtrl_V2_AP1:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stApparentPower.ApparentPower_L1);
+GVL_ClusterCtrl._CCtrl_V2_AP2:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stApparentPower.ApparentPower_L2);
+GVL_ClusterCtrl._CCtrl_V2_AP3:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stApparentPower.ApparentPower_L3);
+GVL_ClusterCtrl._CCtrl_V2_RPtot:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stReactivePower.ReactivePower_Total);
+GVL_ClusterCtrl._CCtrl_V2_RP1:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stReactivePower.ReactivePower_L1);
+GVL_ClusterCtrl._CCtrl_V2_RP2:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stReactivePower.ReactivePower_L2);
+GVL_ClusterCtrl._CCtrl_V2_RP3:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stReactivePower.ReactivePower_L3);
+GVL_ClusterCtrl._CCtrl_V2_EnSaveMode:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.nEnergySavingMode);
+GVL_ClusterCtrl._CCtrl_V2_TECInt:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.nTotEnergyConsInternally);
+DeviceStatus2:=								F_WordSwap(ClusterControl_3Unit.stClusterCtrlData2.stStatus.Device_Status);					
+
+GVL_ClusterCtrl._CCtrl_V3_P:= 				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stActivePower.ActivePower_Total))*0.001;			
+GVL_ClusterCtrl._CCtrl_V3_P1:= 				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stActivePower.ActivePower_L1);			
+GVL_ClusterCtrl._CCtrl_V3_P2:= 				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stActivePower.ActivePower_L2);			
+GVL_ClusterCtrl._CCtrl_V3_P3:= 				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stActivePower.ActivePower_L3);			
+GVL_ClusterCtrl._CCtrl_V3_U1_L1_N:=			(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stLineVoltage.LineVoltage_L1_N)) / 100;	//Scaled to Volt				
+GVL_ClusterCtrl._CCtrl_V3_U2_L2_N:=			(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stLineVoltage.LineVoltage_L2_N)) / 100;	//Scaled to Volt				
+GVL_ClusterCtrl._CCtrl_V3_U3_L3_N:=			(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stLineVoltage.LineVoltage_L3_N)) / 100;	//Scaled to Volt				
+GVL_ClusterCtrl._CCtrl_V3_U1_L1_L2:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stLineVoltage.LineVoltage_L1_L2);					
+GVL_ClusterCtrl._CCtrl_V3_U2_L2_L3:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stLineVoltage.LineVoltage_L1_L2);					
+GVL_ClusterCtrl._CCtrl_V3_U3_L3_L1:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stLineVoltage.LineVoltage_L3_L1);
+GVL_ClusterCtrl._CCtrl_V3_Itot:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stLineCurrent.LineCurrent_Total);						
+GVL_ClusterCtrl._CCtrl_V3_I1:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stLineCurrent.LineCurrent_L1)) / 1000; 	// Scaled to Ampere					
+GVL_ClusterCtrl._CCtrl_V3_I2:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stLineCurrent.LineCurrent_L2)) / 1000;	// Scaled to Ampere 					
+GVL_ClusterCtrl._CCtrl_V3_I3:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stLineCurrent.LineCurrent_L3)) / 1000;	// Scaled to Ampere 					
+//GVL_ClusterCtrl._CCtrl_V3_Yield_Wh:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stYield.Total_AC_energy_all_conductors_Wh);					
+GVL_ClusterCtrl._CCtrl_V3_Yield_KWh:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stYield.Total_AC_energy_all_conductors_kWh);					
+GVL_ClusterCtrl._CCtrl_V3_Yield_MWh:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stYield.Total_AC_energy_all_conductors_MWh);					
+//GVL_ClusterCtrl._CCtrl_V3_YieldDay_Wh:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stYield.Energy_current_day_all_conductors_Wh);					
+GVL_ClusterCtrl._CCtrl_V3_YieldDay_kWh:=	F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stYield.Energy_current_day_all_conductors_kWh);					
+GVL_ClusterCtrl._CCtrl_V3_PV:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stPVDATA.PV_Power);					
+GVL_ClusterCtrl._CCtrl_V3_HZ:=				(F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stLineCurrent.PowerFrequency)) / 100; //Scaled to Hz
+GVL_ClusterCtrl._CCtrl_V3_APtot:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stApparentPower.ApparentPower_Total);
+GVL_ClusterCtrl._CCtrl_V3_AP1:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stApparentPower.ApparentPower_L1);
+GVL_ClusterCtrl._CCtrl_V3_AP2:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stApparentPower.ApparentPower_L2);
+GVL_ClusterCtrl._CCtrl_V3_AP3:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stApparentPower.ApparentPower_L3);
+GVL_ClusterCtrl._CCtrl_V3_RPtot:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stReactivePower.ReactivePower_Total);
+GVL_ClusterCtrl._CCtrl_V3_RP1:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stReactivePower.ReactivePower_L1);
+GVL_ClusterCtrl._CCtrl_V3_RP2:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stReactivePower.ReactivePower_L2);
+GVL_ClusterCtrl._CCtrl_V3_RP3:=				F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stReactivePower.ReactivePower_L3);
+GVL_ClusterCtrl._CCtrl_V3_EnSaveMode:=		F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.nEnergySavingMode);
+GVL_ClusterCtrl._CCtrl_V3_TECInt:=			F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.nTotEnergyConsInternally);
+DeviceStatus3:=								F_WordSwap(ClusterControl_3Unit.stClusterCtrlData3.stStatus.Device_Status);					
+]]></ST>
+    </Implementation>
+    <LineIds Name="F15_ClusterCtrl">
+      <LineId Id="209" Count="0" />
+      <LineId Id="323" Count="0" />
+      <LineId Id="33" Count="1" />
+      <LineId Id="152" Count="7" />
+      <LineId Id="335" Count="0" />
+      <LineId Id="160" Count="7" />
+      <LineId Id="207" Count="0" />
+      <LineId Id="316" Count="0" />
+      <LineId Id="340" Count="3" />
+      <LineId Id="356" Count="2" />
+      <LineId Id="355" Count="0" />
+      <LineId Id="354" Count="0" />
+      <LineId Id="359" Count="0" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="324" Count="0" />
+      <LineId Id="169" Count="0" />
+      <LineId Id="293" Count="8" />
+      <LineId Id="336" Count="0" />
+      <LineId Id="302" Count="8" />
+      <LineId Id="321" Count="0" />
+      <LineId Id="361" Count="8" />
+      <LineId Id="360" Count="0" />
+      <LineId Id="208" Count="0" />
+      <LineId Id="325" Count="0" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="253" Count="8" />
+      <LineId Id="337" Count="0" />
+      <LineId Id="262" Count="8" />
+      <LineId Id="322" Count="0" />
+      <LineId Id="371" Count="8" />
+      <LineId Id="370" Count="0" />
+      <LineId Id="271" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <DUT Name="ST_TotalEnergy" Id="{3a529554-c188-43e3-b7b3-5d53cdcf11ed}">
+    <Declaration><![CDATA[TYPE ST_TotalEnergy :
+STRUCT
+	Total_Active_Energy_Import:		REAL;
+	Total_Active_Energy_Export:		REAL;
+	Total_Reactive_Energy_Import:	REAL;
+	Total_Reactive_Energy_Export:	REAL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

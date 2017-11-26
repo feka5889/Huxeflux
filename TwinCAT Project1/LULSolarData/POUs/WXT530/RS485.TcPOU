@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="RS485" Id="{f86d4129-bfed-44fb-b69f-05ad5c581d3d}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM RS485
+VAR
+	fbSerialLineControl_Com1: SerialLineControl;
+	ComIn_Com1 AT %I*: EL6inData22B;
+	ComOut_Com1 AT %Q*:EL6outData22B;
+
+	bRxData: BOOL;
+	bTxData: BOOL;
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbSerialLineControl_Com1(
+	Mode:=SERIALLINEMODE_EL6_22B,
+	pComIn:=ADR(ComIn_Com1),
+	pComOut:=ADR(ComOut_Com1),
+	SizeComIn:=SIZEOF(ComIn_Com1),
+	Error=> ,
+	ErrorID=> ,
+	TxBuffer:=GVL_WXT530.TxBuffer_Com1,
+	RxBuffer:=GVL_WXT530.RxBuffer_Com1);
+
+bRxData:=ComIn_Com1.D[0]<>0;
+bTxData:=ComOut_Com1.D[0]<>0;]]></ST>
+    </Implementation>
+    <LineIds Name="RS485">
+      <LineId Id="3" Count="10" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <DUT Name="ST_Power" Id="{02629988-d614-4756-8773-a87d763f48e9}">
+    <Declaration><![CDATA[TYPE ST_Power :
+STRUCT
+	Active_Power_Phase_1:	REAL;
+	Active_Power_Phase_2:	REAL;
+	Active_Power_Phase_3:	REAL;
+	Total_Active_Power:		REAL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

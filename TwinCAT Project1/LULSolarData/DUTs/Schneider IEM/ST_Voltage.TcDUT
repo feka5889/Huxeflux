@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <DUT Name="ST_Voltage" Id="{2919d78c-b163-43e0-87d0-0cda7ce3675f}">
+    <Declaration><![CDATA[TYPE ST_Voltage :
+STRUCT
+	Voltage_L1_L2:	REAL;
+	Voltage_L2_L3:	REAL;
+	Voltage_L3_L1:	REAL;	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

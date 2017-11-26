@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.7">
+  <DUT Name="ST_Si420TC" Id="{1e0bab0c-a63f-4960-9945-bc2b9269b705}">
+    <Declaration><![CDATA[TYPE ST_Si420TC :
+STRUCT
+	Irradiation	:DINT;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

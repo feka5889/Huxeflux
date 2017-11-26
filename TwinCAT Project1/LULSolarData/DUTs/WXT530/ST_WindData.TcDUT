@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <DUT Name="ST_WindData" Id="{3f5e709e-51ce-4bf3-b402-88d30168e80b}">
+    <Declaration><![CDATA[TYPE ST_WindData :
+STRUCT
+
+Dn	:REAL;  (*Wind direction minimum (D = degrees)*)
+Dm	:REAL;  (*Wind direction average (D = degrees)*)
+Dx	:REAL;  (*Wind direction maximum (D = degrees*)
+Sn	:REAL;  (*Wind speed minimum (M = m/S)*)
+Sm	:REAL;  (*Wind speed average (M = m/S)*)
+Sx	:REAL;  (*Wind speed maximum (M = m/S)*)	
+
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

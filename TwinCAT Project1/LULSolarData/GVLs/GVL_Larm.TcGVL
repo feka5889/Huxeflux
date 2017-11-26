@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <GVL Name="GVL_Larm" Id="{97d2777d-1c5a-427d-86c2-9175775ee822}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+
+	(* Larmtaggar *)								
+	_BATT_L			AT%MX5000.0			:BOOL;  		(* Låg batterispänning *)
+	_PLC_WD			AT%MX5000.1			:BOOL;  		(* Watchdog *)
+	_MX41_LC			AT%MX5000.2			:BOOL;  		(* Kommunikationsfel*)
+	_GW3U_LC			AT%MX5000.3			:BOOL;  		(* Kommunikationsfel*)
+	_CCtrl_LC			AT%MX5000.4			:BOOL;  		(* Kommunikationsfel*)
+	_CCtrl_V1_L		AT%MX5000.5			:BOOL;  		(* Summalarm *)
+	_CCtrl_V1_LM		AT%MX5000.6			:BOOL;  		(* Omriktare frånslagen *)
+	_CCtrl_V2_L		AT%MX5000.7			:BOOL;  		(* Summalarm *)
+	_CCtrl_V2_LM		AT%MX5001.0			:BOOL;  		(* Omriktare frånslagen *)
+	_CCtrl_V3_L		AT%MX5001.1			:BOOL;  		(* Summalarm *)
+	_CCtrl_V3_LM		AT%MX5001.2			:BOOL;  		(* Omriktare frånslagen *)
+	
+	
+	
+	_BATT_L_ACK		AT%MX5030.0			:BOOL;  		(* Ack batterilarm *)
+
+							
+								
+END_VAR					
+								
+VAR_GLOBAL PERSISTENT								
+								
+								
+(* Larminställningar *)								
+	_MX41_LC_FL		AT%MB5104			:INT;  			(* Larmfördröjning *)
+	_GW3U_LC_FL		AT%MB5106			:INT;  			(* Larmfördröjning *)
+	_CCtrl_LC_FL		AT%MB5108			:INT;  			(* Larmfördröjning *)
+	_CCtrl_V1_L_FL		AT%MB5110			:INT;  			(* Larmfördröjning *)
+	_CCtrl_V2_L_FL		AT%MB5114			:INT;  			(* Larmfördröjning *)
+	_CCtrl_V3_L_FL		AT%MB5118			:INT;  			(* Larmfördröjning *)
+	
+
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

@@ -1,0 +1,1129 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.7">
+  <POU Name="FB_IoT_Publisher" Id="{026f9877-9bee-4b8f-88f8-2aca1feb941d}" SpecialFunc="None">
+    <Declaration><![CDATA[(*
+ Library dependencies: Tc3_IotBase, Tc2_Utilities(3.3.21.0=>)
+ License: TF6701
+*)
+FUNCTION_BLOCK FB_IoT_Publisher
+VAR CONSTANT
+	sEmptyString : STRING := '';
+END_VAR
+VAR_OUTPUT
+	bActive : BOOL; (* FunctionBlock is executing *)
+	bConnected : BOOL; (* Mqtt client is connected *)
+	sErrorMsg : STRING;
+	bError : BOOL; (* An Error is Active *)
+	sLastPublishedTime : STRING; (* Timestamp of the last published message *)
+	//nLastPublishedLength : INT; (* String length of the last published message *)
+END_VAR
+VAR
+	(* Function Blocks *)	
+		fbMqttClient : FB_IotMqttClient;
+		fbTime 		 : FB_LocalSystemTime; (*Function to get localsystemtime*)	
+
+	(* Mqtt specific *)	
+		{attribute 'TcEncoding':='UTF-8'}
+		sTopicPub : STRING(255);
+		tPublishTime : TON;
+		bConnect : BOOL;
+		uPayload : U_Payload;
+		sCurlyBracket : STRING := '{';
+		sCurlyBracketEnd : STRING := '}';
+		nPayloadLength : UINT;
+		
+	(* Local vars *)
+		bInitDone : BOOL;
+		sSystemTime : STRING(255);
+		sJSONTime : STRING(255);
+		nState : INT;
+		i : INT;
+		nPos : INT;
+		nIteratorPackage : INT;
+		
+		//Remove
+		bTest : BOOL;
+		bTest1 : BOOL;
+		hr : DINT;
+		nCounter : INT;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//Call init the first plc-cycle only
+IF NOT bInitDone THEN
+	M_Initialize();
+END_IF
+
+//Update Queue Status
+M_QueueBufferStatus();
+
+//Update the system time
+fbTime(bEnable:=TRUE, dwCycle:= 1);
+sSystemTime := SYSTEMTIME_TO_STRING(fbTime.systemTime); 
+sJSONTime := sSystemTime;
+sJSONTime := REPLACE(sJSONTime, 'T', 1, 11);
+
+//Execute the Mqtt Client
+//The Execute()-method has to be called cyclically as background communication to the broker.
+fbMqttClient.Execute(bConnect);
+
+CASE nState OF
+
+	0: (* Connect *)
+		//Try to connect
+		M_ConnectMQTT();
+		
+		//Check if connected
+		IF fbMqttClient.bConnected THEN
+			nState := 5;
+		ELSIF bError THEN
+			//Continue to fill the buffer and retry the connection
+			nState := 10;
+		END_IF
+		
+	5: (* Init *)
+		bError := FALSE;
+		sErrorMsg := '';
+		tPublishTime(IN:=FALSE);
+		nState := 10;		
+		
+	10: (* Build Payload *)
+		tPublishTime(IN:=TRUE);
+		IF tPublishTime.Q THEN
+			
+			IF nIteratorPackage >= 4 THEN
+				M_CreatePayload(bFullPackage:=TRUE); //Build full package
+				nIteratorPackage := 0;
+			ELSIF nIteratorPackage < 4 THEN
+				nIteratorPackage := nIteratorPackage + 1;
+				M_CreatePayload(bFullPackage:=FALSE); //Build 'half' package
+			END_IF			
+			
+			tPublishTime(IN:=FALSE);
+			nState := 20;
+		END_IF
+			
+	20: (* Publish *)
+		IF fbMqttClient.bConnected THEN
+			//Check if Buffer has messages
+			IF NOT GVL_IoT.bBufferEmpty THEN
+				M_Deque();
+			END_IF
+			
+			//Then do a normal Publish
+			M_Publish(uPayload);
+			nState := 10; //Publish succeeded
+		ELSE
+			M_Queue(uPayload);
+			nState := 600;
+		END_IF
+
+	600: (* Error State - Disconnect *)
+		M_DisconnectMQTT();
+		bError := TRUE;
+		sErrorMsg := 'Lost connection to MQTT Client';
+		
+		nState := 0;
+
+END_CASE]]></ST>
+    </Implementation>
+    <Folder Name="Units Payload" Id="{b53f69bd-cb32-4a12-97ee-df6b1a29cfcc}" />
+    <Method Name="M_AddJSONObject" Id="{02f84da8-ccdf-4adb-ae17-b0d65ccf9959}">
+      <Declaration><![CDATA[METHOD M_AddJSONObject
+VAR_INPUT
+	sObjectName : STRING;
+	sObjectData : STRING;
+END_VAR
+VAR
+	nStringPos : INT;
+	sConcatMessage : STRING;
+	sTempString : STRING := '';
+	sEmpty : STRING;
+	sDoubleQuote : STRING := '"';
+	nStringLength : INT;
+	sColon : STRING := ':';
+	sComma : STRING := ',';
+	nLastPos : UINT;
+	i : UINT;
+	x : INT;
+	y : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//Check first empty position in the array
+FOR i:=0 TO SIZEOF(uPayLoad.aPayload) / SIZEOF(uPayload.aPayload[0]) DO
+	IF uPayload.aPayload[i] = 0 THEN
+		nLastPos := nPayloadLength := i;
+		EXIT;
+	END_IF
+END_FOR
+
+//Check if empty
+IF sObjectName <> '' AND sObjectData <> '' THEN
+
+	IF sObjectName = 'Start' AND sObjectData = '{' THEN
+		//Add the opening Curly Bracket '{'
+		uPayload.aPayload[0] := ASC(sObjectData);
+		
+	ELSIF sObjectName = 'End' AND sObjectData = '}' THEN
+		//Add the closing Curly Bracket '}' 
+		// 44 = ',' in ASCII
+		IF uPayload.aPayload[nLastPos - 1] = 44 THEN
+			uPayload.aPayload[nLastPos - 1] := ASC(sObjectData);
+		ELSE
+			uPayload.aPayload[nLastPos] := ASC(sObjectData);
+		END_IF
+	ELSIF sObjectName = 'CollectionOpen' THEN
+		//Add the following message: "objectData" : {
+		sConcatMessage := CONCAT(sDoubleQuote,
+						   CONCAT(sObjectData,
+							CONCAT(sDoubleQuote,
+						     CONCAT(sColon, '{'))));
+								
+		//Check the String length					 
+		nStringLength := LEN(sConcatMessage);
+		//Retrieve the last pos for the array to fill			
+		y := nLastPos;
+		//Loop trough every character in the string and convert it to ASCII code
+		FOR x:=1 TO nStringLength DO
+			sTempString := '';
+			sTempString := MID(sConcatMessage,1,x);				
+			uPayload.aPayload[y] := ASC(sTempString);
+			y := y + 1;
+		END_FOR
+									
+	ELSIF sObjectName = 'CollectionClose' THEN
+		//Add the following message: },
+		uPayload.aPayload[nLastPos - 1] := ASC('}');
+		uPayload.aPayload[nLastPos] := ASC(sObjectData);		
+	ELSE
+		//Add the message (ObjectName + ObjectData)
+		sTempString := sEmpty;
+
+		// Add the following message: "objectName":"objectData",
+		sConcatMessage := CONCAT(sDoubleQuote, 
+							CONCAT(sObjectName,
+							 CONCAT(sDoubleQuote,
+							  CONCAT(sColon,
+							   CONCAT(sDoubleQuote,
+								CONCAT(sObjectData,
+								 CONCAT(sDoubleQuote, sComma)))))));	
+		//Check the String length					 
+		nStringLength := LEN(sConcatMessage);
+		//Retrieve the last pos for the array to fill			
+		y := nLastPos;
+		//Loop trough every character in the string and convert it to ASCII code
+		FOR x:=1 TO nStringLength DO
+			sTempString := '';
+			sTempString := MID(sConcatMessage,1,x);				
+			uPayload.aPayload[y] := ASC(sTempString);
+			y := y + 1;
+		END_FOR
+		
+	END_IF	
+	
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_BuildPayload" Id="{308a173d-5e59-4452-916a-228716106933}">
+      <Declaration><![CDATA[METHOD M_BuildPayload : BOOL
+VAR_INPUT
+	bFullPackage : BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Method for building the Payload message that is going to be sent to the Azure IoT Hub. 
+// Maximum 4kB message ANVÄNDS INTE GÖR CREATE BAYLOAD ISTÄLLET 
+		
+	//Clear Payload before creating a new one
+	uPayload := GVL_IoT.uPayloadEmpty;
+	
+	//Build JSON-formatted string 
+	//JSON Example: {"deviceId":"MyFirstDevice1","timeStamp":"2017-04-11T10:25:00.224"}	
+
+	//Start Collection
+	M_AddJSONObject('Start', sCurlyBracket);
+	
+	//Add your _Messages_ here:
+	//////////////////////////////////////////
+	//General
+		M_AddJSONObject('ID', GVL_Fastighet.FastighetsBeteckning);
+		M_AddJSONObject('timeStamp', sJSONTime);
+	//Add new collection DataList
+		M_AddJSONObject('CollectionOpen', 'DataList');
+		
+		IF bFullPackage THEN
+		//WXT530
+			//Add collection WXT530
+			IF GVL_Fastighet.WXT530 THEN
+				M_AddJSONObject('CollectionOpen', 'WXT530');
+				//Vind (aR1)
+					M_AddJSONObject('DN', TO_STRING(GVL_WXT530._GW3U_DN));
+					M_AddJSONObject('DM', TO_STRING(GVL_WXT530._GW3U_DM));
+					M_AddJSONObject('DX', TO_STRING(GVL_WXT530._GW3U_DX));
+					M_AddJSONObject('SN', TO_STRING(GVL_WXT530._GW3U_SN));
+					M_AddJSONObject('SM', TO_STRING(GVL_WXT530._GW3U_SM));
+					M_AddJSONObject('SX', TO_STRING(GVL_WXT530._GW3U_SX));
+				//Tryck, temperatur och fuktighet (aR2)
+					M_AddJSONObject('GT3U', TO_STRING(GVL_WXT530._GW3U_GT3U));
+					M_AddJSONObject('GT41', TO_STRING(GVL_WXT530._GW3U_GT41));
+					M_AddJSONObject('GM41', TO_STRING(GVL_WXT530._GW3U_GM41));
+					M_AddJSONObject('GP41', TO_STRING(GVL_WXT530._GW3U_GP41));	
+				//Nederbörd (aR3)		
+					M_AddJSONObject('RC', TO_STRING(GVL_WXT530._GW3U_RC));
+					M_AddJSONObject('RD', TO_STRING(GVL_WXT530._GW3U_RD));
+					M_AddJSONObject('RI', TO_STRING(GVL_WXT530._GW3U_RI));
+					M_AddJSONObject('HC', TO_STRING(GVL_WXT530._GW3U_HC));
+					M_AddJSONObject('HD', TO_STRING(GVL_WXT530._GW3U_HD));
+					M_AddJSONObject('HI', TO_STRING(GVL_WXT530._GW3U_HI));
+					M_AddJSONObject('RP', TO_STRING(GVL_WXT530._GW3U_RP));
+					M_AddJSONObject('HP', TO_STRING(GVL_WXT530._GW3U_HP));		
+			//Close collection WXT530
+				M_AddJSONObject('CollectionClose',',');
+			END_IF
+		//IO
+			//Add collection IO
+				M_AddJSONObject('CollectionOpen', 'IO');
+				// Analog in, hårdvara
+					//M_AddJSONObject('AI1', TO_STRING(GVL_IO._AI1));
+					//M_AddJSONObject('AI2', TO_STRING(GVL_IO._AI2));
+					//M_AddJSONObject('AI3', TO_STRING(GVL_IO._AI3));
+					//M_AddJSONObject('AI4', TO_STRING(GVL_IO._AI4));
+					//M_AddJSONObject('AI5', TO_STRING(GVL_IO._AI5));
+					//M_AddJSONObject('AI6', TO_STRING(GVL_IO._AI6));
+					//M_AddJSONObject('AI7', TO_STRING(GVL_IO._AI7));
+					//M_AddJSONObject('AI8', TO_STRING(GVL_IO._AI8));
+				// Analog in
+					M_AddJSONObject('GT41_MV', TO_STRING(GVL_IO._GT41_MV / 100)); //Scaled to degrees celsius, PT1000 temp sensor at F15
+					M_AddJSONObject('GT42_MV', TO_STRING(GVL_IO._GT42_MV / 100)); //Scaled to degrees celsius, PT1000 temp sensor at F15
+					M_AddJSONObject('GT43_MV', TO_STRING(GVL_IO._GT43_MV));
+					M_AddJSONObject('GT44_MV', TO_STRING(GVL_IO._GT44_MV));
+					M_AddJSONObject('GT45_MV', TO_STRING(GVL_IO._GT45_MV));
+					M_AddJSONObject('GT46_MV', TO_STRING(GVL_IO._GT46_MV));
+					M_AddJSONObject('GT47_MV', TO_STRING(GVL_IO._GT47_MV));
+					M_AddJSONObject('GT48_MV', TO_STRING(GVL_IO._GT48_MV));
+			//Close collection IO
+				M_AddJSONObject('CollectionClose',',');				
+		END_IF
+		//ClusterControl
+			//Add new collection ClusterControl
+				M_AddJSONObject('CollectionOpen', 'ClusterControl');		
+				//V1
+					//M_AddJSONObject('V1_IT', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_IT));
+					M_AddJSONObject('V1_P', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_P));
+					M_AddJSONObject('V1_P1', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_P1));
+					M_AddJSONObject('V1_P2', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_P2));
+					M_AddJSONObject('V1_P3', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_P3));
+					M_AddJSONObject('V1_U1_L1_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U1_L1_N));
+					M_AddJSONObject('V1_U2_L2_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U2_L2_N));
+					M_AddJSONObject('V1_U3_L3_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U3_L3_N));
+					M_AddJSONObject('V1_U1_L1_L2', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U1_L1_L2));
+					M_AddJSONObject('V1_U2_L2_L3', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U2_L2_L3));
+					M_AddJSONObject('V1_U3_L3_L1', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U3_L3_L1));
+					M_AddJSONObject('V1_Itot', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_Itot));
+					M_AddJSONObject('V1_I1', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_I1));
+					M_AddJSONObject('V1_I2', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_I2));
+					M_AddJSONObject('V1_I3', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_I3));
+					//M_AddJSONObject('V1_Yield_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_Yield_Wh));
+					M_AddJSONObject('V1_Yield_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_Yield_kWh));
+					M_AddJSONObject('V1_Yield_MWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_Yield_MWh));
+					//M_AddJSONObject('V1_YieldDay_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_YieldDay_Wh));
+					M_AddJSONObject('V1_YieldDay_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_YieldDay_kWh));
+					M_AddJSONObject('V1_PV', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_PV));	
+					M_AddJSONObject('V1_HZ', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_HZ));			
+				//V2
+					//M_AddJSONObject('V2_IT', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_IT));
+					M_AddJSONObject('V2_P', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P));
+					M_AddJSONObject('V2_P1', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P1));
+					M_AddJSONObject('V2_P2', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P2));
+					M_AddJSONObject('V2_P3', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P3));
+					M_AddJSONObject('V2_U1_L1_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U1_L1_N));
+					M_AddJSONObject('V2_U2_L2_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U2_L2_N));
+					M_AddJSONObject('V2_U3_L3_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U3_L3_N));
+					M_AddJSONObject('V2_U1_L1_L2', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U1_L1_L2));
+					M_AddJSONObject('V2_U2_L2_L3', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U2_L2_L3));
+					M_AddJSONObject('V2_U3_L3_L1', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U3_L3_L1));
+					M_AddJSONObject('V2_Itot', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Itot));
+					M_AddJSONObject('V2_I1', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_I1));
+					M_AddJSONObject('V2_I2', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_I2));
+					M_AddJSONObject('V2_I3', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_I3));
+					//M_AddJSONObject('V2_Yield_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Yield_Wh));
+					M_AddJSONObject('V2_Yield_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Yield_kWh));
+					M_AddJSONObject('V2_Yield_MWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Yield_MWh));
+					//M_AddJSONObject('V2_YieldDay_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_YieldDay_Wh));
+					M_AddJSONObject('V2_YieldDay_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_YieldDay_kWh));
+					M_AddJSONObject('V2_PV', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_PV));	
+					M_AddJSONObject('V2_HZ', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_HZ));	
+				//V3
+					//M_AddJSONObject('V3_IT', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_IT));
+					M_AddJSONObject('V3_P', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_P));
+					M_AddJSONObject('V3_P1', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_P1));
+					M_AddJSONObject('V3_P2', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_P2));
+					M_AddJSONObject('V3_P3', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_P3));
+					M_AddJSONObject('V3_U1_L1_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U1_L1_N));
+					M_AddJSONObject('V3_U2_L2_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U2_L2_N));
+					M_AddJSONObject('V3_U3_L3_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U3_L3_N));
+					M_AddJSONObject('V3_U1_L1_L2', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U1_L1_L2));
+					M_AddJSONObject('V3_U2_L2_L3', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U2_L2_L3));
+					M_AddJSONObject('V3_U3_L3_L1', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U3_L3_L1));
+					M_AddJSONObject('V3_Itot', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_Itot));
+					M_AddJSONObject('V3_I1', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_I1));
+					M_AddJSONObject('V3_I2', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_I2));
+					M_AddJSONObject('V3_I3', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_I3));
+					//M_AddJSONObject('V3_Yield_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_Yield_Wh));
+					M_AddJSONObject('V3_Yield_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_Yield_kWh));
+					M_AddJSONObject('V3_Yield_MWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_Yield_MWh));
+					//M_AddJSONObject('V3_YieldDay_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_YieldDay_Wh));
+					M_AddJSONObject('V3_YieldDay_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_YieldDay_kWh));
+					M_AddJSONObject('V3_PV', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_PV));	
+					M_AddJSONObject('V3_HZ', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_HZ));	
+			//Close collection ClusterControl
+				M_AddJSONObject('CollectionClose',',');	
+		//MX41
+			//Add new collection MX41
+				M_AddJSONObject('CollectionOpen', 'MX41');
+				//MX41 Data
+					M_AddJSONObject('I1', TO_STRING(GVL_MX41._I1));
+					M_AddJSONObject('I2', TO_STRING(GVL_MX41._I2));
+					M_AddJSONObject('I3', TO_STRING(GVL_MX41._I3));
+					M_AddJSONObject('U1_U2', TO_STRING(GVL_MX41._U1_U2));
+					M_AddJSONObject('U2_U3', TO_STRING(GVL_MX41._U2_U3));
+					M_AddJSONObject('U3_U1', TO_STRING(GVL_MX41._U3_U1));
+					M_AddJSONObject('U1_N', TO_STRING(GVL_MX41._U1_N));
+					M_AddJSONObject('U2_N', TO_STRING(GVL_MX41._U2_N));
+					M_AddJSONObject('U3_N', TO_STRING(GVL_MX41._U3_N));
+					M_AddJSONObject('P1', TO_STRING(GVL_MX41._P1));
+					M_AddJSONObject('P2', TO_STRING(GVL_MX41._P2));
+					M_AddJSONObject('P3', TO_STRING(GVL_MX41._P3));
+					M_AddJSONObject('P', TO_STRING(GVL_MX41._P));
+					M_AddJSONObject('PVAR', TO_STRING(GVL_MX41._PVAR));
+					M_AddJSONObject('PVA', TO_STRING(GVL_MX41._PVA));
+					M_AddJSONObject('PFA', TO_STRING(GVL_MX41._Pfa));
+					M_AddJSONObject('HZ', TO_STRING(GVL_MX41._HZ));
+					M_AddJSONObject('WHAI', TO_STRING(GVL_MX41._WHAI));
+					M_AddJSONObject('WHAE', TO_STRING(GVL_MX41._WHAE));
+					M_AddJSONObject('VARHI', TO_STRING(GVL_MX41._VARHI));
+					M_AddJSONObject('VARHE', TO_STRING(GVL_MX41._VARHE));
+					M_AddJSONObject('WHPAI', TO_STRING(GVL_MX41._WHPAI));
+					M_AddJSONObject('WHPAE', TO_STRING(GVL_MX41._WHPAE));
+					M_AddJSONObject('WHAEI1', TO_STRING(GVL_MX41._WHAEI1));
+					M_AddJSONObject('WHAEI2', TO_STRING(GVL_MX41._WHAEI2));
+					M_AddJSONObject('WHAEI3', TO_STRING(GVL_MX41._WHAEI3));
+			//Close collection MX41	
+				M_AddJSONObject('CollectionClose',',');	
+		//SR05 Hukseflux Solar Irradiance meter
+		IF GVL_Fastighet.SMAIrrMeter THEN
+			//Add collection SR05
+				M_AddJSONObject('CollectionOpen', 'SR05');
+				//SR05 Sensor Outputs
+					M_AddJSONObject('Irr', TO_STRING(GVL_SR05._SolarIrr));
+					M_AddJSONObject('BT', TO_STRING(GVL_SR05._BodyTemp));
+					M_AddJSONObject('ER', TO_STRING(GVL_SR05._ElecResistance));
+					M_AddJSONObject('VO', TO_STRING(GVL_SR05._VoltageOutput));					
+			//Close collection SR05
+				M_AddJSONObject('End', sCurlyBracketEnd);
+		END_IF
+	//Close collection DataList	
+		M_AddJSONObject('End', sCurlyBracketEnd);	
+	//////////////////////////////////////////
+	
+	//End Collection
+	M_AddJSONObject('End', sCurlyBracketEnd);	
+
+	//Done
+	M_BuildPayload := TRUE;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_ConnectMQTT" Id="{9253ee32-db95-443e-b60a-ada23493241e}">
+      <Declaration><![CDATA[METHOD M_ConnectMQTT : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bConnect := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_CreatePayload" Id="{45acfa53-b6ad-4a05-b36c-fea92a2f812e}">
+      <Declaration><![CDATA[METHOD M_CreatePayload : BOOL
+VAR_INPUT
+	bFullPackage : BOOL;
+END_VAR
+VAR
+	nLastPosAdded : DINT;
+	i : DINT;
+	sStringCheck : STRING;
+	M_Payload_SMAClusterCntrl: INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Method for building the Payload message that is going to be sent to the Azure IoT Hub. 
+// Maximum 4kB message 
+		
+//Clear Payload before creating a new one
+uPayload := GVL_IoT.uPayloadEmpty;
+
+//Start Collection
+M_AddJSONObject('Start', sCurlyBracket);
+
+//General
+M_AddJSONObject('ID', GVL_Fastighet.FastighetsBeteckning);
+M_AddJSONObject('timeStamp', sJSONTime);
+
+//Add new collection DataList
+M_AddJSONObject('CollectionOpen', 'DataList');
+
+(* Add the units payload that are enabled *)
+IF bFullPackage THEN
+	
+	IF GVL_Fastighet.WXT530 THEN
+		M_Payload_WXT530();
+	END_IF
+	
+	IF GVL_Fastighet.IO THEN
+		M_Payload_IO();
+	END_IF
+	
+END_IF
+
+IF GVL_Fastighet.SMAClusterCntrl THEN
+		M_Payload_SMACluster();
+END_IF
+
+IF GVL_Fastighet.EnergyMeter THEN
+	M_Payload_MX41_iEM3255();
+END_IF
+
+IF GVL_Fastighet.SR05 THEN
+	M_Payload_SR05();
+END_IF
+
+//Trim the payload char ',' from last unit added to create a valid json
+//Check first empty position in the array
+FOR i:=0 TO SIZEOF(uPayLoad.aPayload) / SIZEOF(uPayload.aPayload[0]) DO
+	IF uPayload.aPayload[i] = 0 THEN
+		nLastPosAdded := i;
+		EXIT;
+	END_IF
+END_FOR
+
+//Remove the last ',' char to make a valid json-string
+uPayload.aPayload[nLastPosAdded - 1] := 0;
+
+
+//Close collection DataList	
+M_AddJSONObject('End', sCurlyBracketEnd);	
+
+//End Collection
+M_AddJSONObject('End', sCurlyBracketEnd);	
+
+//Done
+M_CreatePayload := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Deque" Id="{2ee4cb47-ce57-4c4b-a695-144bcee7453d}">
+      <Declaration><![CDATA[METHOD M_Deque : BOOL
+VAR
+	i : INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR i:=0 TO GVL_IoT.nMaxPayloadBuffer DO
+
+	//If there is data, publish it! 
+	IF MEMCMP(ADR(GVL_IoT.uPayloadQueue[i]), ADR(GVL_IoT.uPayloadEmpty), SIZEOF(GVL_IoT.uPayloadEmpty)) <> 0 THEN
+		//Call Publish 
+		M_Publish(GVL_IoT.uPayloadQueue[i]);
+		//After the publish; remove it from the queue
+		GVL_IoT.uPayloadQueue[i] := GVL_IoT.uPayloadEmpty;
+	END_IF
+
+END_FOR
+
+//Done
+M_Deque := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_DisconnectMQTT" Id="{ef1be5eb-5c93-4bb6-b05d-20b71c490f34}">
+      <Declaration><![CDATA[METHOD M_DisconnectMQTT : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[bConnect := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Initialize" Id="{65a0f30a-dd96-4e6a-a022-ba3edaa7477b}">
+      <Declaration><![CDATA[METHOD M_Initialize : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//Initialize startup parameters
+
+	//Message topic that is used for every message, should not be changed! Only if the deviceName have changed
+	sTopicPub := GVL_Fastighet.IoTTopicPub;
+	
+	//Set the SAS token
+	fbMqttClient.sHostName := GVL_Fastighet.IoTHostName;
+	fbMqttClient.nHostPort := GVL_Fastighet.IoTHostPort;
+	//fbMqttClient.stTLS.sAzureSas := 'HostName=StunsSolarHub.azure-devices.net;DeviceId=SE_UPP_A001P001;SharedAccessSignature=SharedAccessSignature sr=StunsSolarHub.azure-devices.net%2Fdevices%2FSE_UPP_A001P001&sig=PNxS244bUszDXJ%2BMNceHTcws%2BEW3ixqGkw0V7mblAEw%3D&se=1525956832';
+	//fbMqttClient.stTLS.sCA := 'c:\TwinCAT\3.1\Config\Certificates\azure.crt';
+	
+	//Default Publish time
+	tPublishTime(PT:=GVL_Fastighet.PublishTime);
+
+	//Set Active flag
+	bActive:= TRUE;
+
+//Initialize completed
+	bInitDone := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Payload_IO" Id="{b0860619-70f8-4302-95ca-0e4e7611e2e2}" FolderPath="Units Payload\">
+      <Declaration><![CDATA[METHOD M_Payload_IO : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//IO
+//Add collection IO
+M_AddJSONObject('CollectionOpen', 'IO');
+// Analog in
+M_AddJSONObject('GT41_MV', TO_STRING(GVL_IO._GT41_MV / 100)); //Scaled to degrees celsius, PT1000 temp sensor at F15
+M_AddJSONObject('GT42_MV', TO_STRING(GVL_IO._GT42_MV / 100)); //Scaled to degrees celsius, PT1000 temp sensor at F15
+M_AddJSONObject('GT43_MV', TO_STRING(GVL_IO._GT43_MV));
+M_AddJSONObject('GT44_MV', TO_STRING(GVL_IO._GT44_MV));
+M_AddJSONObject('GT45_MV', TO_STRING(GVL_IO._GT45_MV));
+M_AddJSONObject('GT46_MV', TO_STRING(GVL_IO._GT46_MV));
+M_AddJSONObject('GT47_MV', TO_STRING(GVL_IO._GT47_MV));
+M_AddJSONObject('GT48_MV', TO_STRING(GVL_IO._GT48_MV));
+//Close collection IO
+M_AddJSONObject('CollectionClose',',');	]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Payload_MX41_iEM3255" Id="{1d20adec-71ef-4579-8571-b70c35ebe378}" FolderPath="Units Payload\">
+      <Declaration><![CDATA[METHOD M_Payload_MX41_iEM3255 : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//Add collection MX41
+M_AddJSONObject('CollectionOpen', 'MX41');
+
+//MX41 Data - Schneider
+M_AddJSONObject('I1', TO_STRING(GVL_MX41._I1));
+M_AddJSONObject('I2', TO_STRING(GVL_MX41._I2));
+M_AddJSONObject('I3', TO_STRING(GVL_MX41._I3));
+M_AddJSONObject('U1_U2', TO_STRING(GVL_MX41._U1_U2));
+M_AddJSONObject('U2_U3', TO_STRING(GVL_MX41._U2_U3));
+M_AddJSONObject('U3_U1', TO_STRING(GVL_MX41._U3_U1));
+(*The following voltage values only returns 0 at F15 per 20017-09-01, investigate and remove commentation when working. Possibly lack of N leader to meter!*)
+//M_AddJSONObject('U1_N', TO_STRING(GVL_MX41._U1_N));
+//M_AddJSONObject('U2_N', TO_STRING(GVL_MX41._U2_N));
+//M_AddJSONObject('U3_N', TO_STRING(GVL_MX41._U3_N));
+(*The following power values only returns 0 at F15 per 20017-09-01, investigate and remove commentation when working. Possibly lack of N leader to meter!*)
+//M_AddJSONObject('P1', TO_STRING(GVL_MX41._P1));
+//M_AddJSONObject('P2', TO_STRING(GVL_MX41._P2));
+//M_AddJSONObject('P3', TO_STRING(GVL_MX41._P3));
+M_AddJSONObject('P', TO_STRING(GVL_MX41._P));
+M_AddJSONObject('PVAR', TO_STRING(GVL_MX41._PVAR));
+M_AddJSONObject('PVA', TO_STRING(GVL_MX41._PVA));
+M_AddJSONObject('PFA', TO_STRING(GVL_MX41._Pfa));
+M_AddJSONObject('HZ', TO_STRING(GVL_MX41._HZ));
+M_AddJSONObject('WHAI', TO_STRING(GVL_MX41._WHAI));
+M_AddJSONObject('WHAE', TO_STRING(GVL_MX41._WHAE));
+M_AddJSONObject('VARHI', TO_STRING(GVL_MX41._VARHI));
+M_AddJSONObject('VARHE', TO_STRING(GVL_MX41._VARHE));
+M_AddJSONObject('WHPAI', TO_STRING(GVL_MX41._WHPAI));
+M_AddJSONObject('WHPAE', TO_STRING(GVL_MX41._WHPAE));
+M_AddJSONObject('WHAEI1', TO_STRING(GVL_MX41._WHAEI1));
+M_AddJSONObject('WHAEI2', TO_STRING(GVL_MX41._WHAEI2));
+M_AddJSONObject('WHAEI3', TO_STRING(GVL_MX41._WHAEI3));
+
+//Close collection MX41	
+M_AddJSONObject('CollectionClose',',');	]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Payload_SMACluster" Id="{e37a9512-d6c3-4819-a051-b3dae3159fe2}" FolderPath="Units Payload\">
+      <Declaration><![CDATA[METHOD M_Payload_SMACluster : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//Add new collection ClusterControl
+M_AddJSONObject('CollectionOpen', 'ClusterControl');		
+
+
+//V1 - Inverter 1
+//M_AddJSONObject('V1_IT', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_IT));
+M_AddJSONObject('V1_P', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_P));
+M_AddJSONObject('V1_P1', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_P1));
+M_AddJSONObject('V1_P2', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_P2));
+M_AddJSONObject('V1_P3', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_P3));
+M_AddJSONObject('V1_U1_L1_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U1_L1_N));
+M_AddJSONObject('V1_U2_L2_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U2_L2_N));
+M_AddJSONObject('V1_U3_L3_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U3_L3_N));
+(*The following voltage values only returns false values at F15 per 20017-09-01, investigate and remove commentation when working*)
+//M_AddJSONObject('V1_U1_L1_L2', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U1_L1_L2));
+//M_AddJSONObject('V1_U2_L2_L3', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U2_L2_L3));
+//M_AddJSONObject('V1_U3_L3_L1', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_U3_L3_L1));
+(*The following parameter Itot only returns a false value at F15 per 20017-09-01, investigate and remove commentation when working*)
+//M_AddJSONObject('V1_Itot', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_Itot));
+M_AddJSONObject('V1_I1', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_I1));
+M_AddJSONObject('V1_I2', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_I2));
+M_AddJSONObject('V1_I3', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_I3));
+//M_AddJSONObject('V1_Yield_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_Yield_Wh));
+M_AddJSONObject('V1_Yield_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_Yield_kWh));
+M_AddJSONObject('V1_Yield_MWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_Yield_MWh));
+//M_AddJSONObject('V1_YieldDay_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_YieldDay_Wh));
+M_AddJSONObject('V1_YieldDay_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_YieldDay_kWh));
+(*The following parameter PV only returns a false value at F15 per 20017-09-01, investigate and remove commentation when working*)
+//M_AddJSONObject('V1_PV', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_PV));	
+M_AddJSONObject('V1_HZ', TO_STRING(GVL_ClusterCtrl._CCtrl_V1_HZ));			
+
+
+//V2 - Inverter 2
+//M_AddJSONObject('V2_IT', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_IT));
+M_AddJSONObject('V2_P', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P));
+M_AddJSONObject('V2_P1', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P1));
+M_AddJSONObject('V2_P2', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P2));
+M_AddJSONObject('V2_P3', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P3));
+M_AddJSONObject('V2_U1_L1_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U1_L1_N));
+M_AddJSONObject('V2_U2_L2_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U2_L2_N));
+M_AddJSONObject('V2_U3_L3_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U3_L3_N));
+(*The following voltage values only return false values at F15 per 20017-09-01, investigate and remove commentation when working*)
+//M_AddJSONObject('V2_U1_L1_L2', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U1_L1_L2));
+//M_AddJSONObject('V2_U2_L2_L3', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U2_L2_L3));
+//M_AddJSONObject('V2_U3_L3_L1', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U3_L3_L1));
+(*The following parameter Itot only returns a false value at F15 per 20017-09-01, investigate and remove commentation when working*)
+//M_AddJSONObject('V2_Itot', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Itot));
+M_AddJSONObject('V2_I1', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_I1));
+M_AddJSONObject('V2_I2', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_I2));
+M_AddJSONObject('V2_I3', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_I3));
+//M_AddJSONObject('V2_Yield_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Yield_Wh));
+M_AddJSONObject('V2_Yield_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Yield_kWh));
+M_AddJSONObject('V2_Yield_MWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Yield_MWh));
+//M_AddJSONObject('V2_YieldDay_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_YieldDay_Wh));
+M_AddJSONObject('V2_YieldDay_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_YieldDay_kWh));
+(*The following parameter PV only returns a false value at F15 per 20017-09-01, investigate and remove commentation when working*)
+//M_AddJSONObject('V2_PV', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_PV));	
+M_AddJSONObject('V2_HZ', TO_STRING(GVL_ClusterCtrl._CCtrl_V2_HZ));	
+
+//V3 - Inverter 3
+//M_AddJSONObject('V3_IT', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_IT));
+M_AddJSONObject('V3_P', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_P));
+M_AddJSONObject('V3_P1', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_P1));
+M_AddJSONObject('V3_P2', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_P2));
+M_AddJSONObject('V3_P3', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_P3));
+M_AddJSONObject('V3_U1_L1_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U1_L1_N));
+M_AddJSONObject('V3_U2_L2_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U2_L2_N));
+M_AddJSONObject('V3_U3_L3_N', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U3_L3_N));
+(*The following voltage values only return false values at F15 per 20017-09-01, investigate and remove commentation when working*)
+//M_AddJSONObject('V3_U1_L1_L2', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U1_L1_L2));
+//M_AddJSONObject('V3_U2_L2_L3', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U2_L2_L3));
+//M_AddJSONObject('V3_U3_L3_L1', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_U3_L3_L1));
+(*The following parameter Itot only returns a false value at F15 per 20017-09-01, investigate and remove commentation when working*)
+//M_AddJSONObject('V3_Itot', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_Itot));
+M_AddJSONObject('V3_I1', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_I1));
+M_AddJSONObject('V3_I2', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_I2));
+M_AddJSONObject('V3_I3', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_I3));
+//M_AddJSONObject('V3_Yield_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_Yield_Wh));
+M_AddJSONObject('V3_Yield_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_Yield_kWh));
+M_AddJSONObject('V3_Yield_MWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_Yield_MWh));
+//M_AddJSONObject('V3_YieldDay_Wh', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_YieldDay_Wh));
+M_AddJSONObject('V3_YieldDay_kWh', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_YieldDay_kWh));
+(*The following parameter PV only returns a false value at F15 per 20017-09-01, investigate and remove commentation when working*)
+//M_AddJSONObject('V3_PV', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_PV));	
+M_AddJSONObject('V3_HZ', TO_STRING(GVL_ClusterCtrl._CCtrl_V3_HZ));	
+
+
+//Close collection ClusterControl
+M_AddJSONObject('CollectionClose',',');	]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Payload_SMAIrrMeter" Id="{b62bc52f-7d93-43b6-b2fc-3ad91bd40aa7}" FolderPath="Units Payload\">
+      <Declaration><![CDATA[METHOD M_Payload_SMAIrrMeter : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Payload_SR05" Id="{48d840e4-e15d-4f3d-b033-d4741cc159c5}" FolderPath="Units Payload\">
+      <Declaration><![CDATA[METHOD M_Payload_SR05 : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//SR05 Hukseflux Solar Irradiance meter
+//Add collection SR05
+M_AddJSONObject('CollectionOpen', 'SR05');
+//SR05 Sensor Outputs
+M_AddJSONObject('Irr', TO_STRING(GVL_SR05._SolarIrr));
+M_AddJSONObject('TempBody', TO_STRING(GVL_SR05._BodyTemp));
+M_AddJSONObject('ElectricalRes', TO_STRING(GVL_SR05._ElecResistance));
+M_AddJSONObject('VoltageOutput', TO_STRING(GVL_SR05._VoltageOutput));					
+//Close collection SR05
+M_AddJSONObject('CollectionClose',',');]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Payload_WXT530" Id="{2bd5efb0-c596-484d-8bf2-16a4308f1d5b}" FolderPath="Units Payload\">
+      <Declaration><![CDATA[METHOD M_Payload_WXT530 : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//WXT530
+//Add collection WXT530
+M_AddJSONObject('CollectionOpen', 'WXT530');
+//Vind (aR1)
+M_AddJSONObject('DN', TO_STRING(GVL_WXT530._GW3U_DN));
+M_AddJSONObject('DM', TO_STRING(GVL_WXT530._GW3U_DM));
+M_AddJSONObject('DX', TO_STRING(GVL_WXT530._GW3U_DX));
+M_AddJSONObject('SN', TO_STRING(GVL_WXT530._GW3U_SN));
+M_AddJSONObject('SM', TO_STRING(GVL_WXT530._GW3U_SM));
+M_AddJSONObject('SX', TO_STRING(GVL_WXT530._GW3U_SX));
+//Tryck, temperatur och fuktighet (aR2)
+M_AddJSONObject('GT3U', TO_STRING(GVL_WXT530._GW3U_GT3U));
+M_AddJSONObject('GT41', TO_STRING(GVL_WXT530._GW3U_GT41));
+M_AddJSONObject('GM41', TO_STRING(GVL_WXT530._GW3U_GM41));
+M_AddJSONObject('GP41', TO_STRING(GVL_WXT530._GW3U_GP41));	
+//Nederbörd (aR3)		
+M_AddJSONObject('RC', TO_STRING(GVL_WXT530._GW3U_RC));
+M_AddJSONObject('RD', TO_STRING(GVL_WXT530._GW3U_RD));
+M_AddJSONObject('RI', TO_STRING(GVL_WXT530._GW3U_RI));
+M_AddJSONObject('HC', TO_STRING(GVL_WXT530._GW3U_HC));
+M_AddJSONObject('HD', TO_STRING(GVL_WXT530._GW3U_HD));
+M_AddJSONObject('HI', TO_STRING(GVL_WXT530._GW3U_HI));
+M_AddJSONObject('RP', TO_STRING(GVL_WXT530._GW3U_RP));
+M_AddJSONObject('HP', TO_STRING(GVL_WXT530._GW3U_HP));		
+//Close collection WXT530
+M_AddJSONObject('CollectionClose',',');]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Publish" Id="{c39d68c3-e6b6-455b-ba47-373604afb995}">
+      <Declaration><![CDATA[METHOD M_Publish : BOOL
+VAR_INPUT
+	uPayloadToPublish : U_Payload;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//Publish the payload
+fbMqttClient.Publish(sTopic:= sTopicPub, 
+									pPayload:= ADR(uPayloadToPublish.aPayload), 
+									nPayloadSize:= SIZEOF(uPayloadToPublish.aPayload), 
+									eQoS:= TcIotMqttQos.AtMostOnceDelivery, 
+									bRetain:= FALSE, 
+									bQueue:= FALSE );
+//Update last published time
+sLastPublishedTime := sSystemTime;		
+//Increase the Publish counter
+GVL_IoT.nTotalMessagePublished := GVL_IoT.nTotalMessagePublished + 1;
+//Done								
+M_Publish := TRUE;																		]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Queue" Id="{ff4cbf8a-a9fd-47b9-83f6-ba245707427c}">
+      <Declaration><![CDATA[METHOD M_Queue : BOOL
+VAR_INPUT
+	uPayloadQueue : U_Payload;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//Check where to add it
+IF GVL_IoT.nLastPos < GVL_IoT.nMaxPayloadBuffer THEN
+	GVL_IoT.uPayloadQueue[GVL_IoT.nLastPos] := uPayloadQueue; //Add to buffer
+END_IF
+
+IF (GVL_IoT.nLastPos + 1) = GVL_IoT.nMaxPayloadBuffer THEN
+	GVL_IoT.bBufferFull := TRUE;
+ELSE
+	GVL_IoT.bBufferFull := FALSE;
+END_IF
+
+//Done
+M_Queue := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_QueueBufferStatus" Id="{68de7af9-a44e-4882-bb81-0475be7ff105}">
+      <Declaration><![CDATA[METHOD M_QueueBufferStatus
+VAR
+	i : INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//Check first empty position in the array
+FOR i:=0 TO GVL_IoT.nMaxPayloadBuffer DO
+	IF MEMCMP(ADR(GVL_IoT.uPayloadQueue[i]), ADR(GVL_IoT.uPayloadEmpty), SIZEOF(GVL_IoT.uPayloadEmpty)) = 1 THEN
+		GVL_IoT.nLastPos := i;
+		EXIT;
+	END_IF
+END_FOR
+
+IF MEMCMP(ADR(GVL_IoT.uPayloadQueue[0]), ADR(GVL_IoT.uPayloadEmpty), SIZEOF(GVL_IoT.uPayloadEmpty)) = 1 THEN
+	GVL_IoT.bBufferEmpty := TRUE;
+ELSE
+	GVL_IoT.bBufferEmpty := FALSE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_IoT_Publisher">
+      <LineId Id="38" Count="0" />
+      <LineId Id="23" Count="1" />
+      <LineId Id="282" Count="0" />
+      <LineId Id="280" Count="1" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="54" Count="1" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="174" Count="0" />
+      <LineId Id="219" Count="0" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="229" Count="0" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="353" Count="0" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="227" Count="1" />
+      <LineId Id="70" Count="1" />
+      <LineId Id="347" Count="0" />
+      <LineId Id="349" Count="1" />
+      <LineId Id="72" Count="0" />
+      <LineId Id="267" Count="3" />
+      <LineId Id="274" Count="1" />
+      <LineId Id="271" Count="0" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="66" Count="0" />
+      <LineId Id="344" Count="0" />
+      <LineId Id="406" Count="0" />
+      <LineId Id="401" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="407" Count="0" />
+      <LineId Id="402" Count="0" />
+      <LineId Id="408" Count="0" />
+      <LineId Id="403" Count="2" />
+      <LineId Id="82" Count="1" />
+      <LineId Id="78" Count="1" />
+      <LineId Id="263" Count="0" />
+      <LineId Id="278" Count="1" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="285" Count="0" />
+      <LineId Id="352" Count="0" />
+      <LineId Id="286" Count="1" />
+      <LineId Id="289" Count="0" />
+      <LineId Id="264" Count="0" />
+      <LineId Id="276" Count="0" />
+      <LineId Id="265" Count="1" />
+      <LineId Id="81" Count="0" />
+      <LineId Id="75" Count="1" />
+      <LineId Id="258" Count="0" />
+      <LineId Id="273" Count="0" />
+      <LineId Id="259" Count="0" />
+      <LineId Id="296" Count="0" />
+      <LineId Id="294" Count="0" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_AddJSONObject">
+      <LineId Id="45" Count="0" />
+      <LineId Id="40" Count="4" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="158" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="80" Count="0" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="82" Count="0" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="137" Count="0" />
+      <LineId Id="133" Count="0" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="134" Count="2" />
+      <LineId Id="139" Count="0" />
+      <LineId Id="205" Count="0" />
+      <LineId Id="188" Count="3" />
+      <LineId Id="193" Count="11" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="182" Count="0" />
+      <LineId Id="207" Count="0" />
+      <LineId Id="206" Count="0" />
+      <LineId Id="209" Count="0" />
+      <LineId Id="86" Count="2" />
+      <LineId Id="90" Count="0" />
+      <LineId Id="132" Count="0" />
+      <LineId Id="114" Count="6" />
+      <LineId Id="125" Count="0" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="130" Count="1" />
+      <LineId Id="96" Count="5" />
+      <LineId Id="109" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="110" Count="0" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_BuildPayload">
+      <LineId Id="14" Count="0" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="275" Count="2" />
+      <LineId Id="84" Count="1" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="57" Count="2" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="249" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="250" Count="1" />
+      <LineId Id="91" Count="0" />
+      <LineId Id="341" Count="0" />
+      <LineId Id="343" Count="0" />
+      <LineId Id="282" Count="1" />
+      <LineId Id="344" Count="0" />
+      <LineId Id="284" Count="22" />
+      <LineId Id="90" Count="0" />
+      <LineId Id="345" Count="0" />
+      <LineId Id="256" Count="1" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="117" Count="6" />
+      <LineId Id="125" Count="8" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="258" Count="0" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="259" Count="0" />
+      <LineId Id="342" Count="0" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="134" Count="1" />
+      <LineId Id="139" Count="0" />
+      <LineId Id="141" Count="9" />
+      <LineId Id="279" Count="0" />
+      <LineId Id="151" Count="8" />
+      <LineId Id="136" Count="1" />
+      <LineId Id="160" Count="10" />
+      <LineId Id="280" Count="0" />
+      <LineId Id="171" Count="8" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="180" Count="11" />
+      <LineId Id="281" Count="0" />
+      <LineId Id="192" Count="8" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="262" Count="0" />
+      <LineId Id="261" Count="0" />
+      <LineId Id="263" Count="1" />
+      <LineId Id="267" Count="0" />
+      <LineId Id="95" Count="0" />
+      <LineId Id="201" Count="25" />
+      <LineId Id="266" Count="0" />
+      <LineId Id="307" Count="1" />
+      <LineId Id="346" Count="0" />
+      <LineId Id="309" Count="1" />
+      <LineId Id="333" Count="0" />
+      <LineId Id="312" Count="0" />
+      <LineId Id="335" Count="0" />
+      <LineId Id="337" Count="0" />
+      <LineId Id="336" Count="0" />
+      <LineId Id="332" Count="0" />
+      <LineId Id="270" Count="0" />
+      <LineId Id="347" Count="0" />
+      <LineId Id="273" Count="0" />
+      <LineId Id="272" Count="0" />
+      <LineId Id="79" Count="2" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="278" Count="0" />
+      <LineId Id="12" Count="1" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_ConnectMQTT">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_CreatePayload">
+      <LineId Id="78" Count="16" />
+      <LineId Id="137" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="95" Count="6" />
+      <LineId Id="139" Count="0" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="102" Count="20" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="123" Count="0" />
+      <LineId Id="134" Count="1" />
+      <LineId Id="125" Count="7" />
+      <LineId Id="29" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_Deque">
+      <LineId Id="36" Count="12" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_DisconnectMQTT">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_Initialize">
+      <LineId Id="15" Count="1" />
+      <LineId Id="6" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="19" Count="1" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="7" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="8" Count="2" />
+      <LineId Id="12" Count="2" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_Payload_IO">
+      <LineId Id="3" Count="12" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_Payload_MX41_iEM3255">
+      <LineId Id="3" Count="33" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_Payload_SMACluster">
+      <LineId Id="3" Count="87" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_Payload_SMAIrrMeter">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_Payload_SR05">
+      <LineId Id="3" Count="8" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_Payload_WXT530">
+      <LineId Id="3" Count="24" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_Publish">
+      <LineId Id="18" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="16" Count="1" />
+      <LineId Id="29" Count="1" />
+      <LineId Id="27" Count="1" />
+      <LineId Id="19" Count="0" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_Queue">
+      <LineId Id="17" Count="0" />
+      <LineId Id="21" Count="1" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="34" Count="1" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="36" Count="2" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_IoT_Publisher.M_QueueBufferStatus">
+      <LineId Id="21" Count="11" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

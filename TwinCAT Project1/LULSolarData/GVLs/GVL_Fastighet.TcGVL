@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.7">
+  <GVL Name="GVL_Fastighet" Id="{f30c1756-e670-44c3-9b87-0e2029512a50}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL PERSISTENT
+	FastighetsBeteckning : STRING := 'A1157_AS3';
+	
+	(* Microsoft Azure IoT Hub Settings *)
+	//IoTHostName			 : STRING := 'sole-ap-01.lul-net.ad.lul.se';
+	IoTHostName			 : STRING := '172.23.10.77'; (* <- Will not be used in vaksala*)
+	IoTHostPort 		 : UINT	:= 1883;	(* <- Will not be used in vaksala*)
+	IoTTopicPub 		 : STRING := 'devices/TestPlc/messages/events/readpipe/';
+	PublishTime 		 : TIME := T#15S; //OBS!! Väderstationens värden samt analoga givare rapporteras till IoT var 4e ggn - se FB_IoT_Publisher och case 10
+	
+	(* Aktivering/deaktivering av enheter *)
+	EnergyMeter			: BOOL := TRUE; //Schneider iEM3255 Energimätare
+	IO 					: BOOL := TRUE; //Analoga mätvärden
+	WXT530				: BOOL := TRUE; //Väderstation Vaisala modell WXT530 
+	SMAClusterCntrl		: BOOL := TRUE; //SMA CLusterControler, använd för att samla ihop fler Växelriktare i en kommunikationspunkt
+	
+	//Si420TC				: BOOL := TRUE; //Den andra solinstrålningsmätaren
+	SR05				: BOOL := TRUE; //Solinstrålningsgivare Hukseflux SR05
+		
+END_VAR
+VAR_GLOBAL
+	(* Loggning - csv fil sparas lokalt på datorn*)
+	CSVClusterCtrl		: BOOL := TRUE; //Växelriktare sammankopplade med en SMA Cluster Controler
+	CSVEnergyMeter		: BOOL := TRUE; //Energimätare Schneider iEM3255
+	CSVTempProbes		: BOOL := TRUE; //Tempgivare solpaneler, analog input
+	CSVWXT530			: BOOL := TRUE; //Väderstation Vaisala modell WXT530
+	CSVSR05				: BOOL := TRUE; //SOLINSTRÅLINGS MÄTARE
+	//CSVSi420TC			: BOOL:=TRUE // Andra solisntrålningsmätaren kisel
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

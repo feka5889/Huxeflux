@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.7">
+  <GVL Name="GVL_IoT" Id="{adc13a43-9ab9-47e9-9fbc-74370a4454e5}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL PERSISTENT
+	uPayloadQueue : ARRAY[0..nMaxPayloadBuffer] OF U_Payload;
+	nLastPos : INT;
+	bBufferFull : BOOL;
+	bBufferEmpty : BOOL;
+	nTotalMessagePublished : ULINT;
+END_VAR
+VAR_GLOBAL CONSTANT
+	nMaxPayloadBuffer : INT := 100;
+END_VAR
+VAR_GLOBAL
+	uPayloadEmpty : U_Payload;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

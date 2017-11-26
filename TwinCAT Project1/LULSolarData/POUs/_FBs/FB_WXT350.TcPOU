@@ -1,0 +1,284 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_WXT350" Id="{bc302f87-485f-476d-87e7-da68ca303fd9}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_WXT350
+
+VAR_INPUT
+	bEnable:BOOL;	
+END_VAR
+
+VAR
+	fbSendString_Com1: SendString;
+	fbReceiveString_Com1: ReceiveString;
+	
+	sReceivedCommand_Com1: STRING;
+	sReceivedData_Com1: STRING;
+	sLastCommand_Com1: STRING;
+	
+	sDeviceAdr 		:STRING:= '0';
+	
+	sSuffix : STRING:='$R$L';
+	sPrefix1 : STRING;//:=CONCAT(sDeviceAdr, sCommand1);
+	sPrefix2 : STRING;//:=CONCAT(sDeviceAdr, sCommand2);
+	sPrefix3 : STRING;//:=CONCAT(sDeviceAdr, sCommand3);
+	
+	(*Wind Data Message (aR1)*)
+	sCommand1 				:STRING:= 'R1';
+	sReceivedString_Com1	:STRING(255); 	(* Dn=236D,Dm=283D,Dx=031D,Sn=0.0M,Sm=1.0M,Sx=2.2M *)
+	sSendAdrCom1 			:STRING;	(*sDeviceAdr + sCommand1 = 0R1*)
+	sSendCommand1			:STRING(255);
+	
+	(*Pressure, Temperature and Humidity Data Message (aR2)*)
+	sCommand2 				:STRING:= 'R2';
+	sReceivedString_Com2	:STRING(255);	(*0R2,Ta=23.6C,Ua=14.2P,Pa=1026.6H<cr><lf>*)
+	sSendString2 			:STRING;
+	sSendAdrCom2 			:STRING;	(*sDeviceAdr + sCommand2 = 0R2*)
+	sSendCommand2			:STRING(255);
+	
+	(*Precipitation Data Message (aR3)*)
+	sCommand3 				:STRING:= 'R3';
+	sReceivedString_Com3	:STRING(255);	(*0R3,Rc=0.0M,Rd=0s,Ri=0.0M,Hc=0.0M,Hd=0s,Hi=0.0M,Rp=0.0M,Hp=0.0M<cr><lf>*)
+	sSendString3 			:STRING;
+	sSendAdrCom3 			:STRING;	(*sDeviceAdr + sCommand3 = 0R3*)
+	sSendCommand3			:STRING(255);
+	
+	nState : INT; 
+	nStateTON : TON;
+	
+	RunCounter: INT;
+
+
+	
+	
+	
+END_VAR
+
+VAR_OUTPUT
+	
+	ComError	:BOOL;
+
+(*Wind Data Message (aR1)*)
+	_Dn	:REAL;  (*Wind direction minimum (D = degrees)*)
+	_Dm	:REAL;  (*Wind direction average (D = degrees)*)
+	_Dx	:REAL;  (*Wind direction maximum (D = degrees*)
+	_Sn	:REAL;  (*Wind speed minimum (M = m/S)*)
+	_Sm	:REAL;  (*Wind speed average (M = m/S)*)
+	_Sx	:REAL;  (*Wind speed maximum (M = m/S)*)	
+	
+(*Pressure, Temperature and Humidity Data Message (aR2)*)
+	_Ta	:REAL;  (*Air temperature (C = °C)*)
+	_TP :REAL;	(*Internal temperature (C = °C)*)
+	_Ua	:REAL;  (*Relative humidity (P = % RH)*)
+	_Pa	:REAL;  (*Air pressure (H = hPa)*)
+	
+(*Precipitation Data Message (aR3)*)
+	_Rc :REAL; (*Rain accumulation (M = mm)*)
+	_Rd :REAL; (*Rain duration (S = S)*)
+	_Ri :REAL;(*Rain intensity (M = mm/h)*)
+	_Hc :REAL; (*Hail accumulation (M = hits/cm2)*)
+	_Hd :REAL; (*Hail duration (S = S)*)
+	_Hi :REAL; (*Hail intensity (M = hits/cm2h)*)
+	_Rp :REAL; (*Rain peak intensity (M = mm/h)*)
+	_Hp :REAL; (*Hail peak intensity (M = hits/cm2h)*)
+	
+	
+	
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+ComError:= fbReceiveString_Com1.StringReceived;
+
+CASE nState OF
+
+	0: (* Init state *)
+	IF bEnable THEN
+		RunCounter:=RunCounter+1;
+		nState := 10;
+		END_IF	
+
+	10: (* Send command:R1 *)	
+		nStateTON(IN:=TRUE, PT:=T#200MS);
+		
+		sSendAdrCom1 := CONCAT(sDeviceAdr,sCommand1);
+		sSendCommand1 := CONCAT(sSendAdrCom1,sSuffix);
+		fbSendString_Com1(SendString:=sSendCommand1, TXbuffer:=GVL_WXT530.TxBuffer_Com1);
+		
+		sPrefix1 :=CONCAT(sDeviceAdr, sCommand1);
+		
+		IF nStateTON.Q THEN
+			nStateTON(IN:=FALSE);
+			nState := 20; //Change state
+		END_IF
+	
+	20:	(* Wait for StringReceived command:R1 *)
+		nStateTON(IN:=TRUE, PT:=T#5S);
+	
+		fbReceiveString_Com1(
+			Prefix:=sPrefix1,
+			Suffix:=sSuffix,
+			Timeout:=T#500MS,
+			Reset:= ,
+			StringReceived=> ,
+			Busy=> ,
+			Error=> ,
+			RxTimeout=> ,
+			ReceivedString:=sReceivedString_Com1,
+			RXbuffer:=GVL_WXT530.RxBuffer_Com1);
+			
+		IF fbReceiveString_Com1.StringReceived THEN
+			nStateTON(IN:=FALSE);
+			nState := 30;
+		ELSIF nStateTON.Q THEN
+			nStateTON(IN:=FALSE);
+			nState := 40;
+		END_IF
+	
+	30: (* Update values:R1 *)
+		nStateTON(IN:=TRUE, PT:=T#200MS);
+		
+		_Dn	:= STRING_TO_REAL(MID(sReceivedString_Com1,6,FIND(sReceivedString_Com1,'Dn')+3));
+		_Dm	:= STRING_TO_REAL(MID(sReceivedString_Com1,6,FIND(sReceivedString_Com1,'Dm')+3));
+		_Dx	:= STRING_TO_REAL(MID(sReceivedString_Com1,6,FIND(sReceivedString_Com1,'Dx')+3));
+		_Sn	:= STRING_TO_REAL(MID(sReceivedString_Com1,6,FIND(sReceivedString_Com1,'Sn')+3));
+		_Sm	:= STRING_TO_REAL(MID(sReceivedString_Com1,6,FIND(sReceivedString_Com1,'Sm')+3));
+		_Sx	:= STRING_TO_REAL(MID(sReceivedString_Com1,6,FIND(sReceivedString_Com1,'Sx')+3)); 
+		
+		IF nStateTON.Q THEN
+			nStateTON(IN:=FALSE);
+			nState := 40; //Change state
+		END_IF
+	
+	40: (* Send command:R2 *)	
+		nStateTON(IN:=TRUE, PT:=T#200MS);
+		
+		sSendAdrCom2 := CONCAT(sDeviceAdr,sCommand2);
+		sSendCommand2 := CONCAT(sSendAdrCom2,sSuffix);
+		fbSendString_Com1(SendString:=sSendCommand2, TXbuffer:=GVL_WXT530.TxBuffer_Com1);
+		
+		sPrefix2 := CONCAT(sDeviceAdr, sCommand2);
+		
+		IF nStateTON.Q THEN
+			nStateTON(IN:=FALSE);
+			nState := 50; //Change state
+		END_IF
+		
+	50:	(* Wait for StringReceived command:R2 *)
+		nStateTON(IN:=TRUE, PT:=T#5S);
+		
+		fbReceiveString_Com1(
+			Prefix:=sPrefix2,
+			Suffix:=sSuffix,
+			Timeout:=T#500MS,
+			Reset:= ,
+			StringReceived=> ,
+			Busy=> ,
+			Error=> ,
+			RxTimeout=> ,
+			ReceivedString:=sReceivedString_Com2,
+			RXbuffer:=GVL_WXT530.RxBuffer_Com1);
+			
+		IF fbReceiveString_Com1.StringReceived THEN
+			nStateTON(IN:=FALSE);
+			nState := 60;
+		ELSIF nStateTON.Q THEN
+			nStateTON(IN:=FALSE);
+			nState := 70;
+		END_IF
+	
+	60: (* Update values:R2 *)
+		nStateTON(IN:=TRUE, PT:=T#200MS);
+		
+		(*Pressure, Temperature and Humidity Data Message (aR2)*)
+		_Ta	:= STRING_TO_REAL(MID(sReceivedString_Com2,6,FIND(sReceivedString_Com2,'Ta')+3));
+		_TP	:= STRING_TO_REAL(MID(sReceivedString_Com2,6,FIND(sReceivedString_Com2,'TP')+3));
+		_Ua	:= STRING_TO_REAL(MID(sReceivedString_Com2,6,FIND(sReceivedString_Com2,'Ua')+3));
+		_Pa	:= STRING_TO_REAL(MID(sReceivedString_Com2,6,FIND(sReceivedString_Com2,'Pa')+3)); 
+		
+		IF nStateTON.Q THEN
+			nStateTON(IN:=FALSE);
+			nState := 70; //Change state
+		END_IF
+
+70: (* Send command:R3 *)	
+		nStateTON(IN:=TRUE, PT:=T#200MS);
+		
+		sSendAdrCom3 := CONCAT(sDeviceAdr,sCommand3);
+		sSendCommand3 := CONCAT(sSendAdrCom3,sSuffix);
+		fbSendString_Com1(SendString:=sSendCommand3, TXbuffer:=GVL_WXT530.TxBuffer_Com1);
+		
+		sPrefix3 := CONCAT(sDeviceAdr, sCommand3);
+		
+		IF nStateTON.Q THEN
+			nStateTON(IN:=FALSE);
+			nState := 80; //Change state
+		END_IF
+		
+	80:	(* Wait for StringReceived command:R3 *)
+		nStateTON(IN:=TRUE, PT:=T#5S);
+		
+		fbReceiveString_Com1(
+			Prefix:=sPrefix3,
+			Suffix:=sSuffix,
+			Timeout:=T#500MS,
+			Reset:= ,
+			StringReceived=> ,
+			Busy=> ,
+			Error=> ,
+			RxTimeout=> ,
+			ReceivedString:=sReceivedString_Com3,
+			RXbuffer:=GVL_WXT530.RxBuffer_Com1);
+			
+		IF fbReceiveString_Com1.StringReceived THEN
+			nStateTON(IN:=FALSE);
+			nState := 90;
+		ELSIF nStateTON.Q THEN
+			nStateTON(IN:=FALSE);
+			nState := 90;
+		END_IF
+	
+	90: (* Update values:R3 *)
+		nStateTON(IN:=TRUE, PT:=T#200MS);
+		
+		_Rc	:= STRING_TO_REAL(MID(sReceivedString_Com3,6,FIND(sReceivedString_Com3,'Rc')+3));
+		_Rd	:= STRING_TO_REAL(MID(sReceivedString_Com3,6,FIND(sReceivedString_Com3,'Rd')+3));
+		_Ri	:= STRING_TO_REAL(MID(sReceivedString_Com3,6,FIND(sReceivedString_Com3,'Ri')+3));
+		_Hc	:= STRING_TO_REAL(MID(sReceivedString_Com3,6,FIND(sReceivedString_Com3,'Hc')+3));
+		_Hd	:= STRING_TO_REAL(MID(sReceivedString_Com3,6,FIND(sReceivedString_Com3,'Hd')+3));
+		_Hi	:= STRING_TO_REAL(MID(sReceivedString_Com3,6,FIND(sReceivedString_Com3,'Hi')+3));
+		_Rp	:= STRING_TO_REAL(MID(sReceivedString_Com3,6,FIND(sReceivedString_Com3,'Rp')+3));
+		_Hp	:= STRING_TO_REAL(MID(sReceivedString_Com3,6,FIND(sReceivedString_Com3,'Hp')+3));
+		
+		IF nStateTON.Q THEN
+			nStateTON(IN:=FALSE);
+			nState := 0; //Change state
+		END_IF
+		
+
+
+
+	
+
+END_CASE
+	
+	
+
+	
+	
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_WXT350">
+      <LineId Id="360" Count="2" />
+      <LineId Id="3" Count="47" />
+      <LineId Id="258" Count="4" />
+      <LineId Id="56" Count="46" />
+      <LineId Id="270" Count="3" />
+      <LineId Id="106" Count="46" />
+      <LineId Id="274" Count="6" />
+      <LineId Id="160" Count="18" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

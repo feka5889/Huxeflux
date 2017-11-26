@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="PLC_TID" Id="{f57e7621-e835-47bb-80c1-fc17e3f654f0}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PLC_TID
+VAR
+	fbTime 						: FB_LocalSystemTime; (*Function to get localsystemtime*)
+	systemTime 					: T_MaxString;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Localsystemtime TimeStamp updater*)
+fbTime(bEnable:=TRUE, dwCycle:= 1);
+systemTime := SYSTEMTIME_TO_STRING(fbTime.systemTime);
+
+
+GVL_IO._PLC_YY				:= fbTime.systemTime.wYear;
+GVL_IO._PLC_MM				:= fbTime.systemTime.wMonth;
+GVL_IO._PLC_DD				:= fbTime.systemTime.wDay;
+GVL_IO._PLC_HHMM			:=(fbTime.systemTime.wHour)*100+(fbTime.systemTime.wMinute);]]></ST>
+    </Implementation>
+    <LineIds Name="PLC_TID">
+      <LineId Id="10" Count="7" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

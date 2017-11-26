@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <DUT Name="ST_PhaseEnergy" Id="{808ff198-99d9-44cc-ae7a-6bfa4540294b}">
+    <Declaration><![CDATA[TYPE ST_PhaseEnergy :
+STRUCT
+	Active_Energy_Import_Phase_1:	REAL;
+	Active_Energy_Import_Phase_2:	REAL;
+	Active_Energy_Import_Phase_3:	REAL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

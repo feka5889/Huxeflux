@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.7">
+  <DUT Name="ST_ClusterCtrl" Id="{fe86951f-c5a7-4649-8121-90f7cccbd3f1}">
+    <Declaration><![CDATA[TYPE ST_ClusterCtrl :
+STRUCT
+	stActivePower			:ST_ActivePower;
+	stLineVoltage			:ST_LineVoltage;
+	stLineCurrent			:ST_LineCurrent;
+	stYield					:ST_Yield;
+	stPVDATA				:ST_PV_data;
+	stStatus				:ST_StatusCtrl;
+	stReactivePower			:ST_ReactivePower;
+	stApparentPower			:ST_ApparentPower;
+	stSi420					:ST_Si420TC;
+	nTotEnergyConsInternally:DWORD;
+	nInverterInteriorTemp 	:DWORD;
+	nEnergySavingMode		:DWORD;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <GVL Name="GVL_IO" Id="{e88d7173-427f-489e-9ba0-e9eb0e31a902}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+(* PLC Year/Month/Day/Time *)									
+	_PLC_YY			AT%MB50				:WORD;			(* Aktuellt år i PLC *)	
+	_PLC_MM			AT%MB52				:WORD;			(* Aktuell månad i PLC *)		
+	_PLC_DD			AT%MB54				:WORD;			(* Aktuell dag i PLC *)	
+	_PLC_HHMM		AT%MB56				:WORD;			(* Aktuell tid i PLC *)		
+											
+(*Analoga in, hårdvara*)									
+	_AI1			AT%IB100			 :INT;			(*Kalibrerat mätvärde*)
+	_AI2			AT%IB102			 :INT;			(*Kalibrerat mätvärde*)
+	_AI3			AT%IB104			 :INT;			(*Kalibrerat mätvärde*)
+	_AI4			AT%IB106			 :INT;			(*Kalibrerat mätvärde*)
+	_AI5			AT%IB108			 :INT;			(*Kalibrerat mätvärde*)
+	_AI6			AT%IB110			 :INT;			(*Kalibrerat mätvärde*)
+	_AI7			AT%IB112			 :INT;			(*Kalibrerat mätvärde*)
+	_AI8			AT%IB114			 :INT;			(*Kalibrerat mätvärde*)
+																																																																																								
+(*Analoga in*)										
+	_GT41_MV 		AT%MB100			 :INT;			(*Kalibrerat mätvärde*)
+	_GT42_MV 		AT%MB102			 :INT;			(*Kalibrerat mätvärde*)
+	_GT43_MV 		AT%MB104			 :INT;			(*Kalibrerat mätvärde*)
+	_GT44_MV 		AT%MB106			 :INT;			(*Kalibrerat mätvärde*)
+	_GT45_MV 		AT%MB108			 :INT;			(*Kalibrerat mätvärde*)
+	_GT46_MV 		AT%MB110			 :INT;			(*Kalibrerat mätvärde*)
+	_GT47_MV 		AT%MB112			 :INT;			(*Kalibrerat mätvärde*)
+	_GT48_MV 		AT%MB114			 :INT;			(*Kalibrerat mätvärde*)
+
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <DUT Name="ST_LineCurrent" Id="{64980b4c-2b69-443d-9930-6f3ef231d5cc}">
+    <Declaration><![CDATA[TYPE ST_LineCurrent :
+STRUCT
+	
+	LineCurrent_Total		:DWORD;
+	LineCurrent_L1			:DWORD;
+	LineCurrent_L2			:DWORD;
+	LineCurrent_L3			:DWORD;
+	PowerFrequency			:DWORD;
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

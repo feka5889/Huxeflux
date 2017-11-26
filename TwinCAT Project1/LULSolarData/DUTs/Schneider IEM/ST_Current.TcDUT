@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <DUT Name="ST_Current" Id="{2f2b3ff5-7af4-4ad5-9e5d-9723e92aef59}">
+    <Declaration><![CDATA[TYPE ST_Current :
+STRUCT
+	Phase_1_current:	REAL;
+	Phase_2_current:	REAL;
+	Phase_3_current:	REAL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

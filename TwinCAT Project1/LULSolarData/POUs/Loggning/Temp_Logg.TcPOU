@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.3">
+  <POU Name="Temp_Logg" Id="{1735528a-ef65-405d-8d5b-7ee34e26eb52}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Temp_Logg
+VAR
+	
+	fbLogg1 		:FB_SaveToCSV_Temp;
+	tUpdateTime1	:TIME:=T#5S;
+	sFileName1		:STRING(255):='Tempgivare';
+	
+	
+
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbLogg1(
+	bChangeSeparatorToComma:= FALSE, 
+	bExecute:= GVL_Fastighet.CSVTempProbes, 
+	tUpdateTime:= tUpdateTime1, 
+	sFileName:= sFileName1, 
+	nDayOfWeek:= PLC_TID.fbTime.systemTime.wDayOfWeek,
+	sColumn1TimeStamp:= PLC_TID.systemTime, 
+	sColumn2:= REAL_TO_STRING(GVL_IO._GT41_MV), 
+	sColumn3:= REAL_TO_STRING(GVL_IO._GT42_MV), 
+	sColumn4:= REAL_TO_STRING(GVL_IO._GT43_MV), 
+	sColumn5:= REAL_TO_STRING(GVL_IO._GT44_MV), 
+	sColumn6:= REAL_TO_STRING(GVL_IO._GT45_MV), 
+	sColumn7:= REAL_TO_STRING(GVL_IO._GT46_MV),
+	sColumn8:= REAL_TO_STRING(GVL_IO._GT47_MV),
+	sColumn9:= REAL_TO_STRING(GVL_IO._GT48_MV));]]></ST>
+    </Implementation>
+    <LineIds Name="Temp_Logg">
+      <LineId Id="27" Count="12" />
+      <LineId Id="129" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

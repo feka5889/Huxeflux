@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.3">
+  <DUT Name="ST_ReactivePower" Id="{5c43479f-b4e5-474e-8097-9967817e30ed}">
+    <Declaration><![CDATA[TYPE ST_ReactivePower :
+STRUCT
+	ReactivePower_Total		:DINT;
+	ReactivePower_L1		:DINT;
+	ReactivePower_L2		:DINT;
+	ReactivePower_L3		:DINT;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

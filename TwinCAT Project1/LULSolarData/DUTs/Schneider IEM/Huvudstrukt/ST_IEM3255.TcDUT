@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <DUT Name="ST_IEM3255" Id="{580861af-bc49-40a8-88de-fe0bc6da5630}">
+    <Declaration><![CDATA[TYPE ST_IEM3255 :
+STRUCT
+	stCurrent:			ST_Current;
+	stVolt:				ST_Voltage;
+	stVolt2:			ST_Voltage2;
+	stPower:			ST_Power;
+	stPower2:			ST_Power2;
+	stPowerFactor:		ST_PowerFactor;
+	stFrequency:		ST_Frequency;
+	stTotalEnergy:		ST_TotalEnergy;
+	stPartialEnergy:	ST_PartialEnergy;
+	stPhaseEnergy:		ST_PhaseEnergy;
+	stOverloadAL:		ST_OverloadAL;
+	stAlarmValue:		ST_AlarmValue;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

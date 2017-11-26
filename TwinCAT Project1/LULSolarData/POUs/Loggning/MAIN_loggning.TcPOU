@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.7">
+  <POU Name="MAIN_loggning" Id="{72947dd7-2af7-418e-a96e-fb391ad9d335}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN_loggning
+VAR
+	fbIoT : FB_IoT_Publisher;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Energimatare Schneider*)
+IF GVL_Fastighet.CSVEnergyMeter THEN
+	iEM3255_Logg();
+END_IF
+
+(*Cluster Control*)
+IF GVL_Fastighet.CSVClusterCtrl THEN
+	Cluster_Logg();
+	Cluster_Logg_2();
+	Cluster_Logg_3();
+	Cluster_Sensor_Logg();
+END_IF
+
+(*Vaderstation*)
+IF GVL_Fastighet.CSVWXT530 THEN
+	WXT530_Logg();
+END_IF
+
+(*Temperaturgivare*)
+IF GVL_Fastighet.CSVTempProbes THEN
+	Temp_Logg();
+END_IF
+//SOLINSTRÅLNINGS MÄTARE
+IF GVL_Fastighet.CSVSR05 THEN
+	SR05_Logg();
+END_IF
+
+//IoT
+fbIoT();]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN_loggning">
+      <LineId Id="19" Count="0" />
+      <LineId Id="82" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="41" Count="1" />
+      <LineId Id="81" Count="0" />
+      <LineId Id="60" Count="1" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="101" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="69" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="88" Count="0" />
+      <LineId Id="94" Count="2" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

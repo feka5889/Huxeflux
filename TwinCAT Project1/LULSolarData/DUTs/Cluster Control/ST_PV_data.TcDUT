@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <DUT Name="ST_PV_data" Id="{8a885483-9610-44f8-ae2a-6d919aab885e}">
+    <Declaration><![CDATA[TYPE ST_PV_data :
+STRUCT
+	Line_current_L1		:DINT;
+	Line_current_L2		:DINT;
+	Line_current_L3		:DINT;
+	PV_Power			:DWORD;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

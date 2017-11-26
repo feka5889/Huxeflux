@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <DUT Name="ST_ActivePower" Id="{1e320b52-3b97-454f-ba7d-f4c97dca3e8d}">
+    <Declaration><![CDATA[TYPE ST_ActivePower :
+STRUCT
+	
+	ActivePower_Total		:DINT;
+	ActivePower_L1			:DINT;
+	ActivePower_L2			:DINT;
+	ActivePower_L3			:DINT;
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

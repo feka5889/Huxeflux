@@ -1,0 +1,1065 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.7">
+  <POU Name="ClusterControl_3Unit" Id="{089c09e9-abaf-46fc-bdef-69c8ed1d7d2a}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM ClusterControl_3Unit
+VAR_OUTPUT
+	bBusy:					BOOL;		(*Upptagen med arbete*)
+	bCommErr:				BOOL;		(*Modbus Kommunikationsfel*)												
+END_VAR
+VAR
+	fbReadRegs:		FB_MBReadRegs; 						(*Modbus läs Holding Registers*)
+	fbDelay:			TON;							(*Fördröjning mellan sekvenserna*)
+	nStat:				INT := 0;						(*Sekvens*)
+	bEnable			:BOOL:=TRUE;
+	sSlaveIP 		:STRING:= '192.168.1.20';
+	uiPort			:UINT:=502;	
+	nUnit_ID				:BYTE:=4;
+	nUnit_ID2				:BYTE:=5;	
+	nUnit_ID3				:BYTE:=3;
+	stClusterCtrlData: ST_ClusterCtrl;
+	stClusterCtrlData2: ST_ClusterCtrl;
+	stClusterCtrlData3: ST_ClusterCtrl;
+	stClusterCtrlDataSensor:ST_ClusterCtrl;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+CASE nStat OF
+
+0:(*Start steg*)
+	IF bEnable THEN
+		bCommErr := FALSE;
+		bBusy := TRUE;
+		nStat := 2;
+	END_IF
+
+2:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID,
+					nQuantity:= 8,
+					nMBAddr:= 30775 ,
+					cbLength:= SIZEOF(stClusterCtrlData.stActivePower) ,
+					pDestAddr :=  ADR(stClusterCtrlData.stActivePower),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 3;
+END_IF
+
+
+3:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 4;
+END_IF;
+
+
+4:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID,
+					nQuantity:= 12,
+					nMBAddr:= 30783 ,
+					cbLength:= SIZEOF(stClusterCtrlData.stLineVoltage) ,
+					pDestAddr :=  ADR(stClusterCtrlData.stLineVoltage),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 5;
+END_IF
+
+
+5:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 6;
+END_IF;
+
+
+6:(*Modbus Funktion 3, Läs data från Holding Registers*)
+(*Detta är den som fixar modbus *)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID,
+					nQuantity:= 10,
+					nMBAddr:= 30795 ,
+					cbLength:= SIZEOF(stClusterCtrlData.stLineCurrent) ,
+					pDestAddr :=  ADR(stClusterCtrlData.stLineCurrent),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 7;
+END_IF
+
+
+7:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 8;
+END_IF;
+
+
+8:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID,
+					nQuantity:= 16,
+					nMBAddr:= 30529 ,
+					cbLength:= SIZEOF(stClusterCtrlData.stYield) ,
+					pDestAddr :=  ADR(stClusterCtrlData.stYield),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 9;
+END_IF
+
+
+9:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 10;
+END_IF;
+
+
+10:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID,
+					nQuantity:= 8,
+					nMBAddr:= 30977 ,
+					cbLength:= SIZEOF(stClusterCtrlData.stPVDATA) ,
+					pDestAddr :=  ADR(stClusterCtrlData.stPVDATA),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 11;
+END_IF
+
+
+11:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 12;
+END_IF;
+
+12:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID,
+					nQuantity:= 2,
+					nMBAddr:= 30201 ,
+					cbLength:= SIZEOF(stClusterCtrlData.stStatus) ,
+					pDestAddr :=  ADR(stClusterCtrlData.stStatus),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 13;
+END_IF
+
+
+13:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 14;
+END_IF;
+
+14: (* nTotEnergyConsInternally *) 
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID,
+					nQuantity:= 2,
+					nMBAddr:= 30593 ,
+					cbLength:= SIZEOF(stClusterCtrlData.nTotEnergyConsInternally) ,
+					pDestAddr :=  ADR(stClusterCtrlData.nTotEnergyConsInternally),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 15;
+END_IF
+
+15:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 16;
+END_IF;
+
+16: (* nInverterInteriorTemp *) 
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID,
+					nQuantity:= 2,
+					nMBAddr:= 34113 ,
+					cbLength:= SIZEOF(stClusterCtrlData.nInverterInteriorTemp) ,
+					pDestAddr :=  ADR(stClusterCtrlData.nInverterInteriorTemp),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 17;
+END_IF
+
+17:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 18;
+END_IF;	
+
+18:(*ReactivePower*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID,
+					nQuantity:= 8,
+					nMBAddr:= 30805 ,
+					cbLength:= SIZEOF(stClusterCtrlData.stReactivePower) ,
+					pDestAddr :=  ADR(stClusterCtrlData.stReactivePower),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 19;
+END_IF
+
+
+19:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 101;
+END_IF;
+
+101:(*ApparentPower*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID,
+					nQuantity:= 8,
+					nMBAddr:= 30813 ,
+					cbLength:= SIZEOF(stClusterCtrlData.stApparentPower) ,
+					pDestAddr :=  ADR(stClusterCtrlData.stApparentPower),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 102;
+END_IF
+
+
+102:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 103;
+END_IF;
+
+103:(*nEnergySavingMode*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID,
+					nQuantity:= 2,
+					nMBAddr:= 40695 ,
+					cbLength:= SIZEOF(stClusterCtrlData.nEnergySavingMode) ,
+					pDestAddr :=  ADR(stClusterCtrlData.nEnergySavingMode),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 104;
+END_IF
+
+104:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 20;
+END_IF;
+
+20:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID2,
+					nQuantity:= 8,
+					nMBAddr:= 30775 ,
+					cbLength:= SIZEOF(stClusterCtrlData2.stActivePower) ,
+					pDestAddr :=  ADR(stClusterCtrlData2.stActivePower),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 21;
+END_IF
+
+
+21:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 22;
+END_IF;
+
+
+22:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID2,
+					nQuantity:= 12,
+					nMBAddr:= 30783 ,
+					cbLength:= SIZEOF(stClusterCtrlData2.stLineVoltage) ,
+					pDestAddr :=  ADR(stClusterCtrlData2.stLineVoltage),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 23;
+END_IF
+
+
+23:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 24;
+END_IF;
+
+
+24:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID2,
+					nQuantity:= 10,
+					nMBAddr:= 30795 ,
+					cbLength:= SIZEOF(stClusterCtrlData2.stLineCurrent) ,
+					pDestAddr :=  ADR(stClusterCtrlData2.stLineCurrent),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 25;
+END_IF
+
+
+25:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 26;
+END_IF;
+
+
+26:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID2,
+					nQuantity:= 16,
+					nMBAddr:= 30529 ,
+					cbLength:= SIZEOF(stClusterCtrlData2.stYield) ,
+					pDestAddr :=  ADR(stClusterCtrlData2.stYield),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 27;
+END_IF
+
+
+27:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 28;
+END_IF;
+
+
+28:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID2,
+					nQuantity:= 8,
+					nMBAddr:= 30977 ,
+					cbLength:= SIZEOF(stClusterCtrlData2.stPVDATA) ,
+					pDestAddr :=  ADR(stClusterCtrlData2.stPVDATA),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 29;
+END_IF
+
+
+29:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 30;
+END_IF;
+
+
+30:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID2,
+					nQuantity:= 2,
+					nMBAddr:= 30201 ,
+					cbLength:= SIZEOF(stClusterCtrlData2.stStatus) ,
+					pDestAddr :=  ADR(stClusterCtrlData2.stStatus),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 31;
+END_IF
+
+
+31:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 32;
+END_IF;
+
+32: (* nTotEnergyConsInternally *) 
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID2,
+					nQuantity:= 2,
+					nMBAddr:= 30593 ,
+					cbLength:= SIZEOF(stClusterCtrlData2.nTotEnergyConsInternally) ,
+					pDestAddr :=  ADR(stClusterCtrlData2.nTotEnergyConsInternally),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 33;
+END_IF
+
+33:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 34;
+END_IF;
+
+34: (* nInverterInteriorTemp *) 
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID2,
+					nQuantity:= 2,
+					nMBAddr:= 34113 ,
+					cbLength:= SIZEOF(stClusterCtrlData2.nInverterInteriorTemp) ,
+					pDestAddr :=  ADR(stClusterCtrlData2.nInverterInteriorTemp),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 35;
+END_IF
+
+35:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 36;
+END_IF;	
+
+36:(*ReactivePower*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID2,
+					nQuantity:= 8,
+					nMBAddr:= 30805 ,
+					cbLength:= SIZEOF(stClusterCtrlData2.stReactivePower) ,
+					pDestAddr :=  ADR(stClusterCtrlData2.stReactivePower),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 37;
+END_IF
+
+
+37:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 38;
+END_IF;
+
+38:(*ApparentPower*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID2,
+					nQuantity:= 8,
+					nMBAddr:= 30813 ,
+					cbLength:= SIZEOF(stClusterCtrlData2.stApparentPower) ,
+					pDestAddr :=  ADR(stClusterCtrlData2.stApparentPower),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 39;
+END_IF
+
+
+39:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 201;
+END_IF;
+
+201:(*nEnergySavingMode*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID2,
+					nQuantity:= 2,
+					nMBAddr:= 40695 ,
+					cbLength:= SIZEOF(stClusterCtrlData2.nEnergySavingMode) ,
+					pDestAddr :=  ADR(stClusterCtrlData2.nEnergySavingMode),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 202;
+END_IF
+
+202:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 40;
+END_IF;
+
+
+
+40:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 8,
+					nMBAddr:= 30775 ,
+					cbLength:= SIZEOF(stClusterCtrlData3.stActivePower) ,
+					pDestAddr :=  ADR(stClusterCtrlData3.stActivePower),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 41;
+END_IF
+
+
+41:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 42;
+END_IF;
+
+
+42:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 12,
+					nMBAddr:= 30783 ,
+					cbLength:= SIZEOF(stClusterCtrlData3.stLineVoltage) ,
+					pDestAddr :=  ADR(stClusterCtrlData3.stLineVoltage),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 43;
+END_IF
+
+
+43:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 44;
+END_IF;
+
+
+44:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 10,
+					nMBAddr:= 30795 ,
+					cbLength:= SIZEOF(stClusterCtrlData3.stLineCurrent) ,
+					pDestAddr :=  ADR(stClusterCtrlData3.stLineCurrent),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 45;
+END_IF
+
+
+45:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 46;
+END_IF;
+
+
+46:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 16,
+					nMBAddr:= 30529 ,
+					cbLength:= SIZEOF(stClusterCtrlData3.stYield) ,
+					pDestAddr :=  ADR(stClusterCtrlData3.stYield),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 47;
+END_IF
+
+
+47:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 48;
+END_IF;
+
+
+48:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 8,
+					nMBAddr:= 30977 ,
+					cbLength:= SIZEOF(stClusterCtrlData3.stPVDATA) ,
+					pDestAddr :=  ADR(stClusterCtrlData3.stPVDATA),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 49;
+END_IF
+
+
+49:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 50;
+END_IF;
+
+
+50:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 2,
+					nMBAddr:= 30201 ,
+					cbLength:= SIZEOF(stClusterCtrlData3.stStatus) ,
+					pDestAddr :=  ADR(stClusterCtrlData3.stStatus),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 51;
+END_IF
+
+
+51:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 52;
+END_IF;
+
+52: (* nTotEnergyConsInternally *) 
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 2,
+					nMBAddr:= 30593 ,
+					cbLength:= SIZEOF(stClusterCtrlData3.nTotEnergyConsInternally) ,
+					pDestAddr :=  ADR(stClusterCtrlData3.nTotEnergyConsInternally),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 53;
+END_IF
+
+53:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 54;
+END_IF;
+
+54: (* nInverterInteriorTemp *) 
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 2,
+					nMBAddr:= 34113 ,
+					cbLength:= SIZEOF(stClusterCtrlData3.nInverterInteriorTemp) ,
+					pDestAddr :=  ADR(stClusterCtrlData3.nInverterInteriorTemp),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 55;
+END_IF
+
+55:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 56;
+END_IF;	
+
+56:(*ReactivePower*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 8,
+					nMBAddr:= 30805 ,
+					cbLength:= SIZEOF(stClusterCtrlData3.stReactivePower) ,
+					pDestAddr :=  ADR(stClusterCtrlData3.stReactivePower),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 57;
+END_IF
+
+
+57:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 58;
+END_IF;
+
+58:(*ApparentPower*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 8,
+					nMBAddr:= 30813 ,
+					cbLength:= SIZEOF(stClusterCtrlData3.stApparentPower) ,
+					pDestAddr :=  ADR(stClusterCtrlData3.stApparentPower),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 59;
+END_IF
+
+59:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 60;
+END_IF;
+
+60:(*nEnergySavingMode*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 2,
+					nMBAddr:= 40695 ,
+					cbLength:= SIZEOF(stClusterCtrlData3.nEnergySavingMode) ,
+					pDestAddr :=  ADR(stClusterCtrlData3.nEnergySavingMode),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 61;
+END_IF
+
+61:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 62;
+END_IF;
+
+62:(*Si420TC*)
+fbReadRegs(
+					sIPAddr:= sSlaveIP,
+					nTCPPort:= uiPort,
+					nUnitID:= nUnit_ID3,
+					nQuantity:= 4,
+					nMBAddr:= 34623 ,
+					cbLength:= SIZEOF(stClusterCtrlDataSensor.stSi420) , //Vet ej hur jag ska göra här
+					pDestAddr :=  ADR(stClusterCtrlDataSensor.stSi420),
+					bExecute:= TRUE ,
+					tTimeout:= T#2S ,bBusy=> ,	bError=> , nErrId=> ,cbRead=> );
+					
+
+IF fbReadRegs.bError THEN
+	nStat := 999;
+ELSIF  NOT fbReadRegs.bBusy AND NOT fbReadRegs.bError THEN
+	fbReadRegs(bExecute := FALSE);
+	nStat := 63;
+END_IF
+
+63:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#200MS , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 0;
+END_IF;
+
+
+
+999:(*Något blev fel*)
+	fbReadRegs(bExecute := FALSE);
+	bCommErr:= TRUE;
+	bBusy := FALSE;
+	nStat := 0;
+END_CASE
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="ClusterControl_3Unit">
+      <LineId Id="93" Count="0" />
+      <LineId Id="397" Count="67" />
+      <LineId Id="1539" Count="0" />
+      <LineId Id="465" Count="83" />
+      <LineId Id="958" Count="0" />
+      <LineId Id="960" Count="25" />
+      <LineId Id="959" Count="0" />
+      <LineId Id="1083" Count="0" />
+      <LineId Id="549" Count="0" />
+      <LineId Id="1066" Count="16" />
+      <LineId Id="579" Count="0" />
+      <LineId Id="1084" Count="5" />
+      <LineId Id="608" Count="0" />
+      <LineId Id="1229" Count="25" />
+      <LineId Id="1228" Count="0" />
+      <LineId Id="1256" Count="26" />
+      <LineId Id="1255" Count="0" />
+      <LineId Id="1338" Count="0" />
+      <LineId Id="1340" Count="25" />
+      <LineId Id="1339" Count="0" />
+      <LineId Id="1496" Count="24" />
+      <LineId Id="1495" Count="0" />
+      <LineId Id="609" Count="143" />
+      <LineId Id="986" Count="28" />
+      <LineId Id="1090" Count="0" />
+      <LineId Id="1093" Count="24" />
+      <LineId Id="1091" Count="0" />
+      <LineId Id="1202" Count="25" />
+      <LineId Id="1201" Count="0" />
+      <LineId Id="1284" Count="12" />
+      <LineId Id="1298" Count="12" />
+      <LineId Id="1283" Count="0" />
+      <LineId Id="1092" Count="0" />
+      <LineId Id="1368" Count="25" />
+      <LineId Id="1366" Count="0" />
+      <LineId Id="1469" Count="11" />
+      <LineId Id="1482" Count="12" />
+      <LineId Id="1468" Count="0" />
+      <LineId Id="1367" Count="0" />
+      <LineId Id="753" Count="1" />
+      <LineId Id="792" Count="142" />
+      <LineId Id="1015" Count="27" />
+      <LineId Id="781" Count="0" />
+      <LineId Id="1119" Count="25" />
+      <LineId Id="1118" Count="0" />
+      <LineId Id="1175" Count="25" />
+      <LineId Id="1174" Count="0" />
+      <LineId Id="1312" Count="25" />
+      <LineId Id="1311" Count="0" />
+      <LineId Id="1395" Count="19" />
+      <LineId Id="1416" Count="5" />
+      <LineId Id="1394" Count="0" />
+      <LineId Id="1440" Count="0" />
+      <LineId Id="1443" Count="24" />
+      <LineId Id="1441" Count="1" />
+      <LineId Id="1543" Count="24" />
+      <LineId Id="1540" Count="2" />
+      <LineId Id="1173" Count="0" />
+      <LineId Id="1172" Count="0" />
+      <LineId Id="787" Count="4" />
+      <LineId Id="313" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

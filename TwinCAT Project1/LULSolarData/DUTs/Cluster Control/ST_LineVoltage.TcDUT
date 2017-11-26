@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <DUT Name="ST_LineVoltage" Id="{788afc35-d415-48a7-af38-e92dc5920cea}">
+    <Declaration><![CDATA[TYPE ST_LineVoltage :
+STRUCT
+	
+	LineVoltage_L1_N 	:DWORD;
+	LineVoltage_L2_N 	:DWORD;
+	LineVoltage_L3_N 	:DWORD;
+	LineVoltage_L1_L2 	:DWORD;
+	LineVoltage_L2_L3 	:DWORD;
+	LineVoltage_L3_L1 	:DWORD;
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.7">
+  <POU Name="Cluster_Sensor_Logg" Id="{2ea4dfff-3dab-43ee-bd71-d86fd1b2f17b}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Cluster_Sensor_Logg
+VAR
+	
+	fbLogg1 		:FB_SaveToCSV_Cluster_Sensors;
+	tUpdateTime1	:TIME:=T#5S;
+	sFileName1		:STRING(255):='Sensor_Logg';
+	
+	
+
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbLogg1(
+	bChangeSeparatorToComma:= FALSE, 
+	bExecute:= GVL_Fastighet.CSVClusterCtrl, 
+	tUpdateTime:= tUpdateTime1, 
+	sFileName:= sFileName1, 
+	nDayOfWeek:= PLC_TID.fbTime.systemTime.wDayOfWeek,
+	sColumn1TimeStamp:= PLC_TID.systemTime, 
+	sColumn2:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_ST_Si420TC), );
+	]]></ST>
+    </Implementation>
+    <LineIds Name="Cluster_Sensor_Logg">
+      <LineId Id="27" Count="7" />
+      <LineId Id="158" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

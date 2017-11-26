@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.6">
+  <Task Name="Modbus" Id="{9d3b606d-1c24-4c7a-a44b-d9883247e5e1}">
+    <!--CycleTime in micro seconds.-->
+    <CycleTime>1000</CycleTime>
+    <Priority>1</Priority>
+    <PouCall>
+      <Name>F15_AS3_MQ41</Name>
+    </PouCall>
+    <PouCall>
+      <Name>F15_AS3_WXT530</Name>
+    </PouCall>
+    <PouCall>
+      <Name>RS485</Name>
+    </PouCall>
+    <TaskFBGuid>{bd0d482e-f157-46b2-b375-82b447a218a1}</TaskFBGuid>
+    <Fb_init>{9decd410-de61-436a-92f8-459e4e34fb84}</Fb_init>
+    <Fb_exit>{17e12e4e-229e-4647-9364-740d4fb38162}</Fb_exit>
+    <CycleUpdate>{2fbb7960-9f7a-47e8-8a22-ca0af866f864}</CycleUpdate>
+    <PostCycleUpdate>{ebedf8bf-2324-4fe6-9409-f775fd27f830}</PostCycleUpdate>
+  </Task>
+</TcPlcObject>

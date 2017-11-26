@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.3">
+  <POU Name="F_WordSwap" Id="{75adb5c7-1721-4a35-afe6-e1568ba4a27e}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION F_WordSwap : DWORD
+VAR_INPUT
+	nDataIn : DWORD;
+END_VAR
+VAR
+	nHighWord : WORD;
+	nLowWord : WORD;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[nLowWord := DWORD_TO_WORD(nDataIn);
+nHighWord := DWORD_TO_WORD( SHR(nDataIn, 16 ));
+
+F_WordSwap := nHighWord + nLowWord;
+]]></ST>
+    </Implementation>
+    <LineIds Name="F_WordSwap">
+      <LineId Id="3" Count="3" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

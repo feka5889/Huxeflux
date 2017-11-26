@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.3">
+  <DUT Name="ST_Yield" Id="{2485e90e-0d3f-4f46-b5cb-9a42154812c8}">
+    <Declaration><![CDATA[TYPE ST_Yield :
+STRUCT
+	Total_AC_energy_all_conductors_Wh		:DWORD;
+	Total_AC_energy_all_conductors_kWh		:DWORD;
+	Total_AC_energy_all_conductors_MWh		:DWORD;
+	Energy_current_day_all_conductors_Wh	:DWORD;
+	Energy_current_day_all_conductors_kWh	:DWORD;
+	Energy_current_day_all_conductors_MWh	:DWORD;
+	Operating_time							:DWORD;
+	Feed_in_time							:DWORD;	
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

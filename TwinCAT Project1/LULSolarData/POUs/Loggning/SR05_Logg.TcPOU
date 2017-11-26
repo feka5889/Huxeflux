@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.7">
+  <POU Name="SR05_Logg" Id="{3cf0e4b3-fa51-4abd-87f0-adcbd2d47b6f}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM SR05_Logg
+VAR
+	
+	fbLogg1 		:FB_SaveToCSV_SR05;
+	tUpdateTime1	:TIME:=T#5S;
+	sFileName1		:STRING(255):='SR05Irr';
+	
+	
+
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbLogg1(
+	bChangeSeparatorToComma:= FALSE, 
+	bExecute:= GVL_Fastighet.CSVSR05, 
+	tUpdateTime:= tUpdateTime1, 
+	sFileName:= sFileName1, 
+	nDayOfWeek:= PLC_TID.fbTime.systemTime.wDayOfWeek,
+	sColumn1TimeStamp:= PLC_TID.systemTime, 
+	sColumn2:= REAL_TO_STRING(GVL_SR05._SolarIrr), 
+	sColumn3:= REAL_TO_STRING(GVL_SR05._BodyTemp), 
+	sColumn4:= REAL_TO_STRING(GVL_SR05._ElecResistance), 
+	sColumn5:= REAL_TO_STRING(GVL_SR05._VoltageOutput),);
+	
+	
+	(*
+ _SolarIrr				:REAL;			(*Solar Irradiance, signal in x 0.01 W/m², adr 2+3*)
+_BodyTemp				:REAL;			(*Sensor body temperature in x 0.01 °C, adr 6*)
+_ElecResistance			:REAL;			(*Sensor electrical resistance in x 0.1 Ω, adr 7*)	
+_VoltageOutput			:REAL;			(*Solar Irradiance, signal in x 0.01 W/m², adr 2+3*)
+*)]]></ST>
+    </Implementation>
+    <LineIds Name="SR05_Logg">
+      <LineId Id="27" Count="10" />
+      <LineId Id="140" Count="1" />
+      <LineId Id="143" Count="0" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="144" Count="1" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="146" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

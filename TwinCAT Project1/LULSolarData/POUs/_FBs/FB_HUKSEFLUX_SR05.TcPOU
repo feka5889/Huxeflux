@@ -1,0 +1,195 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_HUKSEFLUX_SR05" Id="{97060516-60aa-457b-aba1-f1504f281d11}" SpecialFunc="None">
+    <Declaration><![CDATA[
+FUNCTION_BLOCK FB_HUKSEFLUX_SR05
+VAR_INPUT
+	bEnable:			BOOL;		(*Enable*)
+	bySlaveAdr:			BYTE;		(*Slav Id*)
+END_VAR
+VAR_OUTPUT
+	bBusy:					BOOL;		(*Upptagen med arbete*)
+	bMbCommErr:				BOOL;		(*Modbus Komm. fel*)
+	
+	//_rIrr 					:REAL;			(*Solar Irradiance, signal in x 0.01 W/m², adr 2+3*)
+	//_rBodyTemp				:REAL;			(*Sensor body temperature in x 0.01 °C, adr 6*)
+	//_rElecResistance		:REAL;			(*Sensor electrical resistance in x 0.1 Ω, adr 7*)	
+	//_rVoltageOutput			:REAL;			(*Solar Irradiance, signal in x 0.01 W/m², adr 2+3*)
+	
+	
+END_VAR
+VAR
+	fbRtuMaster:		ModbusRtuMaster_KL6x22B; 		(*Modbus master instans*)
+	fbDelay:			TON;							(*Fördröjning mellan sekvenserna*)
+	nStat:				INT := 0;						(*Sekvens*)
+	
+stSR05_Data:ST_SR05_IrrMeter;	
+	
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE nStat OF
+
+0:(*Start steg*)
+	IF bEnable THEN
+		bMbCommErr := FALSE;
+		bBusy := TRUE;
+		nStat := 2;
+	END_IF
+
+
+2:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbRtuMaster.ReadRegs(
+					UnitID:= bySlaveAdr ,
+					Quantity:= 2,
+					MBAddr:= 2 ,
+					cbLength:= SIZEOF(stSR05_Data.Solar_Irradiance_raw) , // Solar irradiance value from sensor, needs to be recalculated to W/m2 acc to formula in manual
+					pMemoryAddr:=  ADR(stSR05_Data.Solar_Irradiance_raw),
+					Execute:= TRUE ,
+					Timeout:= T#2S ,BUSY=> ,	Error=> , ErrorId=> ,cbRead=> );
+					
+					
+IF fbRtuMaster.Error THEN
+	nStat := 999;
+ELSIF  NOT fbRtuMaster.BUSY AND NOT fbRtuMaster.Error THEN
+	fbRtuMaster.ReadRegs(Execute := FALSE);
+	nStat := 3;
+END_IF
+
+
+3:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#100ms , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 4;
+END_IF;
+
+
+4:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbRtuMaster.ReadRegs(
+					UnitID:= bySlaveAdr ,
+					Quantity:= 1,
+					MBAddr:= 6 ,
+					cbLength:= SIZEOF(stSR05_Data.Sensor_Body_Temp) ,
+					pMemoryAddr:=  ADR(stSR05_Data.Sensor_Body_Temp),
+					Execute:= TRUE ,
+					Timeout:= T#2s ,BUSY=> ,	Error=> , ErrorId=> ,cbRead=> );
+
+IF fbRtuMaster.Error THEN
+	nStat := 999;
+ELSIF  NOT fbRtuMaster.BUSY AND NOT fbRtuMaster.Error THEN
+	fbRtuMaster.ReadRegs(Execute := FALSE);
+	nStat := 5;
+END_IF
+
+
+5:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#100ms , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 6;
+END_IF;
+
+
+4:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbRtuMaster.ReadRegs(
+					UnitID:= bySlaveAdr ,
+					Quantity:= 1,
+					MBAddr:= 7 ,
+					cbLength:= SIZEOF(stSR05_Data.Sensor_Elec_Resistance) ,
+					pMemoryAddr:=  ADR(stSR05_Data.Sensor_Elec_Resistance),
+					Execute:= TRUE ,
+					Timeout:= T#2s ,BUSY=> ,	Error=> , ErrorId=> ,cbRead=> );
+
+IF fbRtuMaster.Error THEN
+	nStat := 999;
+ELSIF  NOT fbRtuMaster.BUSY AND NOT fbRtuMaster.Error THEN
+	fbRtuMaster.ReadRegs(Execute := FALSE);
+	nStat := 7;
+END_IF
+
+
+7:	(*Fördröj*)
+fbDelay(IN:= TRUE, PT:=T#100ms , Q=> , ET=> );
+IF fbDelay.Q THEN
+	fbDelay(IN:= FALSE);
+	nStat := 8;
+END_IF;
+
+
+2:(*Modbus Funktion 3, Läs data från Holding Registers*)
+fbRtuMaster.ReadRegs(
+					UnitID:= bySlaveAdr ,
+					Quantity:= 2,
+					MBAddr:= 10 ,
+					cbLength:= SIZEOF(stSR05_Data.Sensor_voltage_output) ,
+					pMemoryAddr:=  ADR(stSR05_Data.Sensor_voltage_output),
+					Execute:= TRUE ,
+					Timeout:= T#2s ,BUSY=> ,	Error=> , ErrorId=> ,cbRead=> );
+
+IF fbRtuMaster.Error THEN
+	nStat := 999;
+ELSIF  NOT fbRtuMaster.BUSY AND NOT fbRtuMaster.Error THEN
+	fbRtuMaster.ReadRegs(Execute := FALSE);
+	nStat := 20;
+END_IF
+
+
+
+20:(*Läsning klar*)
+	(*Beräkna och visa på utgången*)
+	
+	//Calculation of Solar irradiance acc to SR05 Manual v1610, see page 43 
+	stSR05_Data.Solar_Irradiance:= ((DWORD TO WORD (stSR05_Data.Solar_Irradiance_raw)* (2 EXP 16) )+ DWORD_TO_WORD( SHR(stSR05_Data.Solar_Irradiance_raw, 16 )));  
+	
+	//
+	GVL_SR05._SolarIrr:=		stSR05_Data.Solar_Irradiance * 0.01; //Signal in x 0.01 W/m², scaled here to W/m²
+	GVL_SR05._BodyTemp:=		stSR05_Data.Sensor_Body_Temp * 0.01; //Signal in x 0.01 °C, scaled here to Celsius (°C)
+	GVL_SR05._ElecResistance:=	stSR05_Data.Sensor_Elec_Resistance * 0.1; //Signal in x 0.1 Ω, scaled here to Ω
+	GVL_SR05._VoltageOutput:=	stSR05_Data.Sensor_voltage_output * 10* EXP(-9); //Signal in x 10-9 V, scaled here to V
+	
+	(*Scale and store in Global variables*)
+	//GVL_SR05._Irr:= 
+	
+	nStat := 0;
+
+999:(*Något blev fel*)
+	fbRtuMaster.ReadRegs(Execute := FALSE);
+	bMbCommErr:= TRUE;
+	bBusy := FALSE;
+	nStat := 0;
+END_CASE
+
+
+
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_HUKSEFLUX_SR05">
+      <LineId Id="3" Count="17" />
+      <LineId Id="605" Count="1" />
+      <LineId Id="22" Count="17" />
+      <LineId Id="529" Count="22" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="552" Count="25" />
+      <LineId Id="580" Count="16" />
+      <LineId Id="578" Count="0" />
+      <LineId Id="299" Count="0" />
+      <LineId Id="497" Count="1" />
+      <LineId Id="611" Count="0" />
+      <LineId Id="613" Count="0" />
+      <LineId Id="612" Count="0" />
+      <LineId Id="597" Count="0" />
+      <LineId Id="614" Count="0" />
+      <LineId Id="599" Count="2" />
+      <LineId Id="598" Count="0" />
+      <LineId Id="602" Count="0" />
+      <LineId Id="607" Count="0" />
+      <LineId Id="499" Count="0" />
+      <LineId Id="608" Count="0" />
+      <LineId Id="526" Count="0" />
+      <LineId Id="331" Count="6" />
+      <LineId Id="603" Count="1" />
+      <LineId Id="338" Count="1" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

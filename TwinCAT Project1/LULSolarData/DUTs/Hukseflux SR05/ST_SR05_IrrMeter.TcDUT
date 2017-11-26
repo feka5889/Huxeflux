@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <DUT Name="ST_SR05_IrrMeter" Id="{f539e121-475b-4b49-8ae9-821177ce11e5}">
+    <Declaration><![CDATA[TYPE ST_SR05_IrrMeter :
+STRUCT
+	Solar_Irradiance_raw:  		REAL;
+	Solar_Irradiance:   		REAL;
+	Sensor_Body_Temp:			REAL;
+	Sensor_Elec_Resistance:		REAL;
+	Sensor_voltage_output:		REAL;
+	
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

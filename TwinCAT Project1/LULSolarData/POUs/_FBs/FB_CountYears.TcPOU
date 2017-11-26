@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_CountYears" Id="{0aaa4f57-eca9-468a-8fa4-255f9354404b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_CountYears
+
+(*Läser funktionsblock FB_Pulsfilter*)
+VAR_INPUT
+	bCount	: BOOL;
+	bReset	:BOOL;
+
+END_VAR
+
+VAR_IN_OUT
+	diYears	: DINT;
+
+END_VAR
+
+VAR
+	pfReset	: R_TRIG;
+	filterCount	: FB_Pulsfilter;
+
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[filterCount(bIN:=bCount,);
+pfReset(CLK:= bReset,);
+
+
+IF filterCount.bQ THEN
+diYears := diYears + 1;
+END_IF
+
+
+IF pfReset.Q THEN
+diYears := 0;
+END_IF
+
+
+IF bReset = TRUE THEN
+bReset := FALSE;
+END_IF
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_CountYears">
+      <LineId Id="172" Count="15" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

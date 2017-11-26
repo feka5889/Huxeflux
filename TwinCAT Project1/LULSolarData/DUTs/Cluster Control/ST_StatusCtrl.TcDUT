@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <DUT Name="ST_StatusCtrl" Id="{c921a9a1-facf-4cf0-91fd-406a62ce300f}">
+    <Declaration><![CDATA[TYPE ST_StatusCtrl :
+STRUCT
+	Device_Status		:DWORD;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

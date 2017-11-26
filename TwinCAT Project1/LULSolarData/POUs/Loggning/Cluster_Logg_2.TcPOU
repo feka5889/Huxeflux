@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.3">
+  <POU Name="Cluster_Logg_2" Id="{0c91d8d1-af1d-449b-abda-515f426d8b0d}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Cluster_Logg_2
+VAR
+	
+	fbLogg1 		:FB_SaveToCSV_ClusterCtrl;
+	tUpdateTime1	:TIME:=T#5S;
+	sFileName1		:STRING(255):='Unit2_1';
+	
+	fbLogg2 		:FB_SaveToCSV_ClusterCtrl;
+	tUpdateTime2	:TIME:=T#5S;
+	sFileName2		:STRING(255):='Unit2_2';
+	
+	fbLogg3 		:FB_SaveToCSV_ClusterCtrl;
+	tUpdateTime3	:TIME:=T#5S;
+	sFileName3		:STRING(255):='Unit2_3';
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[fbLogg1(	
+	bChangeSeparatorToComma:= FALSE, 
+	bExecute:= GVL_Fastighet.CSVClusterCtrl, 
+	tUpdateTime:= tUpdateTime1, 
+	sFileName:= sFileName1, 
+	nDayOfWeek:= PLC_TID.fbTime.systemTime.wDayOfWeek,
+	sColumn1TimeStamp:= PLC_TID.systemTime, 
+	sColumn2:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P1), 
+	sColumn3:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P2), 
+	sColumn4:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P3), 
+	sColumn5:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U1_L1_N), 
+	sColumn6:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U2_L2_N), 
+	sColumn7:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U3_L3_N),
+	sColumn8:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_HZ));
+	
+	fbLogg2(
+	bChangeSeparatorToComma:= FALSE, 
+	bExecute:= GVL_Fastighet.CSVClusterCtrl, 
+	tUpdateTime:= tUpdateTime2, 
+	sFileName:= sFileName2, 
+	nDayOfWeek:= PLC_TID.fbTime.systemTime.wDayOfWeek,
+	sColumn1TimeStamp:= PLC_TID.systemTime, 
+	sColumn2:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U1_L1_L2), 
+	sColumn3:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U2_L2_L3), 
+	sColumn4:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_U3_L3_L1), 
+	sColumn5:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Itot), 
+	sColumn6:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_I1), 
+	sColumn7:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_I2), 
+	sColumn8:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_I3));
+	
+	fbLogg3(
+	bChangeSeparatorToComma:= FALSE, 
+	bExecute:= GVL_Fastighet.CSVClusterCtrl, 
+	tUpdateTime:= tUpdateTime3, 
+	sFileName:= sFileName3, 
+	nDayOfWeek:= PLC_TID.fbTime.systemTime.wDayOfWeek,
+	sColumn1TimeStamp:= PLC_TID.systemTime, 
+	sColumn2:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Yield_Wh), 
+	sColumn3:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Yield_kWh), 
+	sColumn4:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_Yield_MWh), 
+	sColumn5:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_YieldDay_Wh), 
+	sColumn6:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_YieldDay_kWh), 
+	sColumn7:= REAL_TO_STRING(GVL_ClusterCtrl._CCtrl_V2_P));]]></ST>
+    </Implementation>
+    <LineIds Name="Cluster_Logg_2">
+      <LineId Id="93" Count="24" />
+      <LineId Id="153" Count="0" />
+      <LineId Id="118" Count="15" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

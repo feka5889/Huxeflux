@@ -1,0 +1,189 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <POU Name="FB_SaveToCSV_ClusterCtrl" Id="{25370c6f-b48f-445e-824e-a2e756488948}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_SaveToCSV_ClusterCtrl
+VAR CONSTANT
+	MAX_CSV_COLUMNS 	: UDINT := 8;
+END_VAR
+VAR_INPUT
+	(*	In USA/UK the CSV field separator is a comma.
+	In Germany and some other European countries the CSV field separator is a semicolon. *)
+	bChangeSeparatorToComma	: BOOL := FALSE;
+	bExecute : BOOL;
+	tUpdateTime : TIME:=T#1S; //Update time 
+	sFileName	: T_MaxString := 'DefaultName';(* CSV destination file path and name *)
+	nDayOfWeek : WORD;
+	sColumn1TimeStamp : T_MaxString;
+	sColumn2 : STRING;
+	sColumn3 : STRING;
+	sColumn4 : STRING; 
+	sColumn5 : STRING;
+	sColumn6 : STRING;
+	sColumn7 : STRING;
+	sColumn8 : STRING;
+END_VAR
+VAR
+	sNetId			: T_AmsNetId := '';	(* TwinCAT system network address *)	
+	sCSVLine		: T_MaxString := '';(* Single CSV text line (row, record), we are using string as record buffer (your are able to see created fields) *)
+	sCSVField		: T_MaxString := '';(* Single CSV field value (column, record field) *)
+	bBusy			: BOOL;
+	bError			: BOOL;
+	nErrId			: UDINT;
+	nColumn		: UDINT 	:= 1;(* Column number (record field) *)
+	hFile			: UINT		:= 0;(* File handle of the source file *)
+	step			: DWORD 	:= 0;
+	fbFileOpen	: FB_FileOpen;(* Opens file *)
+	fbFileClose	: FB_FileClose;(* Closes file *)
+	fbFilePuts		: FB_FilePuts;(* Writes one record (line) *)
+	fbWriter		: FB_CSVMemBufferWriter;(* Helper function block used to create CSV data bytes (single record line) *)	
+	tUpdateTimer : TON;
+	sCompleteFileName : STRING;
+	sPathName : T_MaxString;
+	sTempDate : STRING;
+	sDate : STRING;
+	bWeekUpdate : BOOL;
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(* Call the timer every plc-cycle *)
+tUpdateTimer(IN:=NOT tUpdateTimer.Q, PT:=tUpdateTime);
+
+
+(* Update filename *)
+IF nDayOfWeek = 1 AND bWeekUpdate THEN //1=Monday	
+		sCompleteFileName	:= sFileName;
+		sTempDate := DELETE(sColumn1TimeStamp, 16,11); //Cut the timestamp so we only save the date
+		sDate := INSERT(sTempDate, '_', 10); //Add '-' after the date for seperation
+		sPathName:=CONCAT(CONCAT('C:\Loggning\Cluster\',CONCAT(sDate,sFileName)),'.csv');
+		bWeekUpdate := FALSE;
+ELSE
+	(* Update if name has changed *)
+	IF sCompleteFileName <> sFileName THEN
+		sCompleteFileName := sFileName;
+		sTempDate := DELETE(sColumn1TimeStamp, 16,11); //Cut the timestamp so we only save the date
+		sDate := INSERT(sTempDate, '_', 10); //Add '-' after the date for seperation
+		sPathName:=CONCAT(CONCAT('C:\Loggning\Cluster\',CONCAT(sDate,sCompleteFileName)),'.csv');
+	END_IF	
+END_IF
+
+IF nDayOfWeek <> 1 THEN
+	bWeekUpdate := TRUE;
+END_IF
+
+CASE step OF
+	0:	(* Wait for rising edge at bWrite variable *)
+		IF bExecute AND tUpdateTimer.Q THEN
+			bBusy 		:= TRUE;
+			bError		:= FALSE;
+			nErrId		:= 0;
+			hFile			:= 0;
+			step 		:= 1;
+		END_IF
+
+	1:	(* Open source file *)
+		fbFileOpen(  bExecute := FALSE  );
+		fbFileOpen( 	sNetId := sNetId, sPathName := sPathName, nMode := FOPEN_MODEAPPEND OR FOPEN_MODETEXT,(* Open file in TEXT mode! *)
+						ePath := PATH_GENERIC, bExecute := TRUE );
+		step := 2;
+
+	2:(* Wait until open not busy *)
+		fbFileOpen( bExecute := FALSE, bError => bError, nErrID => nErrID, hFile => hFile );
+		IF NOT fbFileOpen.bBusy THEN
+			IF NOT fbFileOpen.bError THEN
+				step := 3;
+			ELSE(* Error: file not found? *)
+				step := 100;
+			END_IF
+		END_IF
+		
+	3:(* Convert one PLC record to CSV format *)
+		sCSVLine := '';
+		fbWriter.eCmd := eEnumCmd_First;(* Write first field value *)
+		
+		FOR nColumn := 1 TO MAX_CSV_COLUMNS BY 1 DO
+				
+				IF nColumn = 1 THEN
+					sCSVField := STRING_TO_CSVFIELD(sColumn1TimeStamp, FALSE);
+				ELSIF nColumn = 2 THEN
+					sCSVField := STRING_TO_CSVFIELD(sColumn2, FALSE);
+				ELSIF nColumn = 3 THEN
+					sCSVField := STRING_TO_CSVFIELD(sColumn3, FALSE);
+				ELSIF nColumn = 4 THEN
+					sCSVField := STRING_TO_CSVFIELD(sColumn4, FALSE);
+				ELSIF nColumn = 5 THEN
+					sCSVField := STRING_TO_CSVFIELD(sColumn5, FALSE);
+				ELSIF nColumn = 6 THEN	
+					sCSVField := STRING_TO_CSVFIELD(sColumn6, FALSE);
+				ELSIF nColumn = 7 THEN	
+					sCSVField := STRING_TO_CSVFIELD(sColumn7, FALSE);
+				ELSIF nColumn = 8 THEN	
+					sCSVField := STRING_TO_CSVFIELD(sColumn8, FALSE);
+				END_IF
+				
+				(* Add new field to the record buffer *)
+				fbWriter( 	pBuffer := ADR( sCSVLine ), cbBuffer := SIZEOF( sCSVLine ) - 1, putValue := sCSVField, pValue := 0, cbValue := 0,
+							bCRLF := ( nColumn = MAX_CSV_COLUMNS ) );
+										
+				IF fbWriter.bOk THEN
+					fbWriter.eCmd := eEnumCmd_Next;(* Write next field value *)
+				ELSE(* Error *)
+					step := 100;
+					RETURN;
+				END_IF
+
+		END_FOR
+
+		(* FB_FilePuts adds allready CR (carriage return) to the written line.
+		We have to replace the $R$L characters with $L character to avoid double CR. *)
+		IF RIGHT( sCSVLine, 2 ) = '$R$L' THEN
+			sCSVLine := REPLACE( sCSVLine, '$L', 2, LEN( sCSVLine ) - 1 );
+		END_IF
+
+		step := 4;(* Write record to the file *)
+		
+	4:	(* Write single text line *)
+		fbFilePuts( bExecute := FALSE );
+		fbFilePuts( sNetId := sNetId, hFile := hFile, sLine := sCSVLine, bExecute := TRUE );
+		step := 5;
+
+	5:(* Wait until write not busy *)
+		fbFilePuts( bExecute := FALSE, bError => bError, nErrID => nErrID );
+		IF NOT fbFilePuts.bBusy THEN
+			IF NOT fbFilePuts.bError THEN
+				step := 10;(* Close file *)
+			ELSE(* Error *)
+				step := 100;
+			END_IF
+		END_IF
+
+	10:	(* Close source file *)
+		fbFileClose( bExecute := FALSE );
+		fbFileClose( sNetId := sNetId, hFile := hFile, bExecute := TRUE );
+		step := 11;
+
+	11:(* Wait until close not busy *)
+		fbFileClose( bExecute := FALSE, bError => bError, nErrID => nErrID );
+		IF ( NOT fbFileClose.bBusy ) THEN
+			hFile := 0;
+			step := 100;
+		END_IF
+
+	100: (* Error or ready step => cleanup *)
+		IF ( hFile <> 0 ) THEN
+			step := 10; (* Close the source file *)
+		ELSE
+			bBusy := FALSE;
+			step := 0;	(* Ready *)
+		END_IF
+
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="FB_SaveToCSV_ClusterCtrl">
+      <LineId Id="51" Count="69" />
+      <LineId Id="223" Count="2" />
+      <LineId Id="122" Count="57" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

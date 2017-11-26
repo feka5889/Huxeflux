@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <GVL Name="GVL_WXT530" Id="{2c55fa1f-f146-4a05-981c-3758d0d3dcce}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	TxBuffer_Com1: ComBuffer;
+	RxBuffer_Com1: ComBuffer;
+										
+(*Vind (aR1)*)								
+	_GW3U_DN		AT%MB1000			:REAL;  		(*Vindriktning MIN, grader*)
+	_GW3U_DM		AT%MB1004			:REAL;  		(*Vindriktning medel, grader*)
+	_GW3U_DX		AT%MB1008			:REAL;  		(*Vindriktning MAX, grader*)
+	_GW3U_SN		AT%MB1012			:REAL;  		(*Vindhastighet MIN, m/s*)
+	_GW3U_SM		AT%MB1016			:REAL;  		(*Vindhastighet medel, m/s*)
+	_GW3U_SX		AT%MB1020			:REAL;  		(*Vindhastighet MAX, m/s*)
+											
+(*Tryck, temperatur and fuktighet (aR2)*)								
+	_GW3U_GT3U		AT%MB1024			:REAL;  		(*Utetemperatur,°C*)
+	_GW3U_GT41 		AT%MB1028			:REAL;  		(*Intern temperatur °C*)
+	_GW3U_GM41		AT%MB1032			:REAL;  		(*Relativ fuktighet, % RH*)
+	_GW3U_GP41		AT%MB1036			:REAL;  		(*Lufttryck, hPa*)
+																	
+(*Nederbörd (aR3)*)								
+	_GW3U_RC		AT%MB1040			:REAL;  		(*Regn ackumulerat, mm*)
+	_GW3U_RD		AT%MB1044			:REAL;  		(*Regn varaktighet,  S*)
+	_GW3U_RI		AT%MB1048			:REAL;  		(*Regn intensitet, mm/h*)
+	_GW3U_HC		AT%MB1052			:REAL;  		(*Hagel accumulation, nedslag/cm2*)
+	_GW3U_HD		AT%MB1056			:REAL;  		(*Hagel varkatighet, S*)
+	_GW3U_HI 		AT%MB1060			:REAL;  		(*Hagel intensitet, nedslag/cm2h*)
+	_GW3U_RP		AT%MB1064			:REAL;  		(*Regn peak intensitet, mm/h*)
+	_GW3U_HP		AT%MB1068			:REAL;  		(*Hagelpeak intensitet, nedslag/cm2h*)
+	
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

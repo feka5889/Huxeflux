@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4020.12">
+  <GVL Name="GVL_SR05" Id="{78f97a34-9b91-418b-acb3-f1c24fc34082}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL	
+																					
+(*Mätvärden*)											
+_SolarIrr				:REAL;			(*Solar Irradiance, signal in x 0.01 W/m², adr 2+3*)
+_BodyTemp				:REAL;			(*Sensor body temperature in x 0.01 °C, adr 6*)
+_ElecResistance			:REAL;			(*Sensor electrical resistance in x 0.1 Ω, adr 7*)	
+_VoltageOutput			:REAL;			(*Solar Irradiance, signal in x 0.01 W/m², adr 2+3*)
+
+
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

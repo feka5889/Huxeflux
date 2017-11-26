@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4022.3">
+  <POU Name="MAIN" Id="{c9d8b898-8938-4f73-b698-bd45bf9b5389}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+
+
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(*Kalla på IOs*)
+F15_AS3_AI();
+
+(*Kalla på program*)
+
+F15_ClusterCtrl();
+F15_ClusterCtrl_Larm();
+
+
+PLC_Batteri_Larm();
+MAIN_loggning();
+
+(*Kalla på Systemprogram*)
+PersistentData();
+PLC_TID();
+WatchDog_PLC();]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="4" Count="1" />
+      <LineId Id="9" Count="1" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="11" Count="1" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="42" Count="1" />
+      <LineId Id="16" Count="1" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
